@@ -180,14 +180,20 @@ class WebsocketAdapter(BaseAdapter):
 
 
 class WebsocketPlugin(TransportPlugin):
-    PREFIX = "ws://"
+    name = "websocket"
+    package_name = "httpie_websockets"
+    prefix = "ws://"
+    description = "WebSocket transport plugin for HTTPie"
 
     def get_adapter(self):
         return WebsocketAdapter()
 
 
 class WebsocketSPlugin(TransportPlugin):
-    PREFIX = "wss://"
+    package_name = "httpie_websockets"
+    name = "websocket-s"
+    prefix = "wss://"
+    description = "Secure WebSocket transport plugin for HTTPie"
 
     def get_adapter(self):
         return WebsocketAdapter()
