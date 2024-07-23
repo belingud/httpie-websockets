@@ -35,6 +35,9 @@ distribution = true
 excludes = ["tests", ".idea/", ".vscode", ".venv", "pdm.lock", ".gitignore", "var"]
 includes = ["httpie_websockets.py"]
 
+[tool.pdm.scripts]
+bump = "bump2version {args}"
+
 [tool.pdm.dev-dependencies]
 dev = [
     "bump2version>=1.0.1",
