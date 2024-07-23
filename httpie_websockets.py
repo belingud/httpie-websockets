@@ -14,7 +14,7 @@ from requests.adapters import BaseAdapter
 from requests.models import PreparedRequest, Response
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
-__version__ = "0.0.3"
+__version__ = "0.1.0"
 
 
 class WebsocketAdapter(BaseAdapter):
