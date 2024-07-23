@@ -12,6 +12,19 @@ dependencies = [
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
+home-page = "https://github.com/belingud/httpie-websockets"
+repository = "https://github.com/belingud/httpie-websockets"
+issues = "https://github.com/belingud/httpie-websockets/issues"
+license = { file = "LICENSE" }
+keywords = ["http", "httpie", "plugin", "websocket", "websockets"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "Topic :: Communications :: WebSockets",
+]
 
 [build-system]
 requires = ["pdm-backend"]
