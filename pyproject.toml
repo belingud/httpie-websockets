@@ -23,7 +23,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Framework :: AsyncIO",
     "Intended Audience :: Developers",
-    "Topic :: Communications :: WebSockets",
 ]
 
 [build-system]
