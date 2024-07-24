@@ -12,6 +12,7 @@ import websockets
 from httpie.plugins import TransportPlugin
 from requests.adapters import BaseAdapter
 from requests.models import PreparedRequest, Response
+from requests.structures import CaseInsensitiveDict
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
 __version__ = "0.1.0"
@@ -21,10 +22,8 @@ class WebsocketAdapter(BaseAdapter):
     def __init__(self, queue_size: int = 1024):
         super().__init__()
         self._msg_queue = asyncio.Queue(queue_size)
-        # running event
-        self._finish_event = threading.Event()
-
         self._running = False
+
         self._websocket: Optional[websockets.WebSocketClientProtocol] = None
         # tasks
         self._receive_task: Optional[asyncio.Task] = None
@@ -101,10 +100,7 @@ class WebsocketAdapter(BaseAdapter):
                         )
                     await self._websocket.send(message)
             except websockets.exceptions.ConnectionClosed as e:
-                self._write_stdout(
-                    f"Connection closed with code: {e.code}, reason: {e.reason}\n"
-                    f"Cleaning, press Ctrl+C again to exit force."
-                )
+                self._write_stdout(f"Connection closed with code: {e.code}, reason: {e.reason}")
                 self._running = False
                 break
             except asyncio.CancelledError:
@@ -118,15 +114,11 @@ class WebsocketAdapter(BaseAdapter):
         """
         await self._connect(websocket_url)
         self._receive_task = asyncio.create_task(self._receive())
-        self._receive_task.set_name("ReceiveTask")
         self._send_task = asyncio.create_task(self._send_messages())
-        self._send_task.set_name("SendTask")
         try:
             await asyncio.gather(self._receive_task, self._send_task)
         except Exception:  # noqa
             pass
-        finally:
-            self._finish_event = threading.Event()
 
     def read_stdin(self) -> Optional[str]:
         """
@@ -140,21 +132,24 @@ class WebsocketAdapter(BaseAdapter):
         return sys.stdin.readline().strip()
 
     def send(self, request, **kwargs):
-        self._running = True
         websocket_url = request.url
+        self._ws_thread.start()
+        try:
+            asyncio.run_coroutine_threadsafe(self._connect(websocket_url), self._ws_loop).result()
+        except OSError:
+            self.close()
+            return self.dummy_response(request, 500, "Cannot connect to server")
+        self._running = True
         self._write_stdout(f"> {websocket_url}")
         self._write_stdout("Type a message and press enter to send it")
         self._write_stdout("Type 'exit' to close the connection")
 
         try:
-            self._ws_thread.start()
             self._run_task = self._run(websocket_url)
             asyncio.run_coroutine_threadsafe(self._run_task, self._ws_loop)
 
             # Read input messages and put them in the queue
             while self._running:
-                if self._finish_event.is_set():
-                    break
                 msg = self.read_stdin()
                 if not msg:
                     continue
@@ -165,6 +160,8 @@ class WebsocketAdapter(BaseAdapter):
             self._write_stdout(
                 "\nKeyboardInterrupt received. Cleaning up, press Ctrl+C again to exit force."
             )
+            # ensure send message task quits
+            asyncio.run_coroutine_threadsafe(self.put(None), self._ws_loop).result()
         finally:
             self.close()
         return self.dummy_response(request)
@@ -182,21 +179,31 @@ class WebsocketAdapter(BaseAdapter):
             self._stdout.write("\n")
             self._stdout.flush()
 
-    def dummy_response(self, request: PreparedRequest) -> Response:
+    def dummy_response(
+        self, request: PreparedRequest, status_code: int = 200, msg: str = ""
+    ) -> Response:
         """
         Create a dummy response for requests send method
         Args:
             request:
+            status_code(int):
+            msg(str): Message to show on stdout
 
         Returns: requests.Response
         """
         r = Response()
-        r.status_code = 200
+        r.status_code = status_code
         r.request = request
         close_code = self._websocket.close_code if self._websocket else 1000
-        reason = self._websocket.close_reason if self._websocket else ""
+        reason = self._websocket.close_reason if self._websocket else msg
+        headers = CaseInsensitiveDict(self._websocket.response_headers) if self._websocket else CaseInsensitiveDict({})
+        r.headers = headers
         r._content = r.reason = reason
-        r.raw = io.BytesIO(f"""Close Code: {close_code}\nReason: {reason}""".encode("utf-8"))
+        r.raw = io.BytesIO(
+            msg.encode("utf-8")
+            if msg
+            else f"""Close Code: {close_code}\nReason: {reason}""".encode("utf-8")
+        )
         r.url = request.url
         return r
 

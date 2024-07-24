@@ -1,5 +1,8 @@
 # httpie-websockets
 
+[![PyPI version](https://img.shields.io/pypi/v/httpie-websockets?style=for-the-badge)](https://pypi.org/project/httpie-websockets/) [![License](https://img.shields.io/github/license/belingud/httpie-websockets.svg?style=for-the-badge)](https://opensource.org/licenses/MIT) ![Static Badge](https://img.shields.io/badge/language-Python-%233572A5?style=for-the-badge) ![PyPI - Downloads](https://img.shields.io/pypi/dm/httpie-websockets?logo=pypi&style=for-the-badge)
+
+
 Home: https://github.com/belingud/httpie-websockets
 
 `httpie-websockets` is an HTTPie CLI plugin that adds WebSocket support to the HTTPie command line.
@@ -39,6 +42,15 @@ This allows HTTPie to interact with WebSocket servers directly from the command 
 
 If you want to uninstall this plugin, use the same way when you install.
 
-Installed by `httpie` command, uninstall by `httpie plugins uninstall httpie-websockets`
-Installed by `pip` command, uninstall by `pip uninstall httpie-websockets`
+Installed by `httpie` command, uninstall by 
+
+```shell
+httpie plugins uninstall httpie-websockets
+```
+
+Installed by `pip` command, uninstall by 
+
+```shell
+pip uninstall httpie-websockets
+```
 
