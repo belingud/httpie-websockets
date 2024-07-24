@@ -15,7 +15,7 @@ from requests.models import PreparedRequest, Response
 from requests.structures import CaseInsensitiveDict
 
 warnings.simplefilter("ignore", category=RuntimeWarning)
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 
 class WebsocketAdapter(BaseAdapter):
