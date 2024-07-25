@@ -7,6 +7,15 @@ Home: https://github.com/belingud/httpie-websockets
 
 `httpie-websockets` is an HTTPie CLI plugin that adds WebSocket support to the HTTPie command line.
 
+
+<!-- TOC -->
+* [httpie-websockets](#httpie-websockets)
+  * [Features](#features)
+  * [Install](#install)
+  * [Usage](#usage)
+  * [Uninstall](#uninstall)
+<!-- TOC -->
+
 ## Features
 
 - **WebSocket Support:** Seamlessly connect to WebSocket servers using the familiar HTTPie command line interface.
@@ -37,6 +46,16 @@ http ws://localhost:8000/ws
 ```
 
 This allows HTTPie to interact with WebSocket servers directly from the command line.
+
+Example:
+
+```shell
+$ http ws://localhost:8877
+> ws://localhost:8877
+Type a message and press enter to send it
+Type 'exit' to close the connection
+
+```
 
 ## Uninstall
 

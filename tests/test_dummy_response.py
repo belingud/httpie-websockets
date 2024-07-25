@@ -1,5 +1,7 @@
 from unittest.mock import Mock
+
 from requests.models import PreparedRequest
+
 from httpie_websockets import WebsocketAdapter
 
 
@@ -9,6 +11,15 @@ def test_dummy_response():
     adapter._websocket = mock_websocket
     mock_websocket.close_code = 1000
     mock_websocket.close_reason = "Closed by user"
+    mock_websocket.response_headers = {
+        "connection": "upgrade",
+        "upgrade": "websocket",
+        "sec-websocket-accept": "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=",
+        "sec-websocket-extensions": "permessage-deflate; client_no_context_takeover; client_max_window_bits",
+        "sec-websocket-version": "13",
+        "date": "Wed, 24 Jul 2024 15:42:28 GMT",
+        "server": "nginx",
+    }
 
     request = PreparedRequest()
     request.url = "ws://example.com"
