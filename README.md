@@ -2,19 +2,19 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/httpie-websockets?style=for-the-badge)](https://pypi.org/project/httpie-websockets/) [![License](https://img.shields.io/github/license/belingud/httpie-websockets.svg?style=for-the-badge)](https://opensource.org/licenses/MIT) ![Static Badge](https://img.shields.io/badge/language-Python-%233572A5?style=for-the-badge) ![PyPI - Downloads](https://img.shields.io/pypi/dm/httpie-websockets?logo=pypi&style=for-the-badge) ![Pepy Total Downlods](https://img.shields.io/pepy/dt/httpie-websockets?style=for-the-badge&logo=python)
 
-
-
 Home: https://github.com/belingud/httpie-websockets
 
 `httpie-websockets` is an HTTPie CLI plugin that adds WebSocket support to the HTTPie command line.
 
 
 <!-- TOC -->
+
 * [httpie-websockets](#httpie-websockets)
-  * [Features](#features)
-  * [Install](#install)
-  * [Usage](#usage)
-  * [Uninstall](#uninstall)
+    * [Features](#features)
+    * [Install](#install)
+    * [Usage](#usage)
+    * [Uninstall](#uninstall)
+
 <!-- TOC -->
 
 ## Features
@@ -36,6 +36,18 @@ or use pip in the same environment with httpie
 
 ```shell
 pip install httpie-websockets
+```
+
+If your `httpie` is installed with `pipx`, you also can use `pipx` to install `httpie-websockets`, If you cannot use it
+properly after installation。
+
+Suppose your httpie environment is named httpie.
+
+```shell
+# Replace httpie with your httpie venv name
+pipx inject httpie httpie-websockets  # will auto upgrade version
+# or
+pipx runpip httpie install -U httpie-websockets
 ```
 
 ## Usage
@@ -62,13 +74,13 @@ Type 'exit' to close the connection
 
 If you want to uninstall this plugin, use the same way when you install.
 
-Installed by `httpie` command, uninstall by 
+Installed by `httpie` command, uninstall by
 
 ```shell
 httpie plugins uninstall httpie-websockets
 ```
 
-Installed by `pip` command, uninstall by 
+Installed by `pip` command, uninstall by
 
 ```shell
 pip uninstall httpie-websockets
