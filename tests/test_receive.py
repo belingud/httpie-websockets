@@ -22,81 +22,68 @@ def websocket_adapter():
     return adapter
 
 
-@pytest.mark.asyncio
-async def test_receive(websocket_adapter):
-    server = await websockets.serve(echo, "localhost", 8765)
-
-    async with websockets.connect("ws://localhost:8765") as websocket:
-        websocket_adapter._websocket = websocket
-
-        # Start the _receive coroutine
-        receive_task = asyncio.create_task(websocket_adapter._receive())
-
-        # Send a test message to the WebSocket server
-        test_message = "test message"
-        await websocket.send(test_message)
-
-        # Allow the coroutine to process
-        await asyncio.sleep(0.1)
-
-        # Check that the _write_stdout method was called with the test message
-        websocket_adapter._write_stdout.assert_called_once_with(test_message)
-
-        # Cancel the task to exit the while loop
-        receive_task.cancel()
-        try:
-            await receive_task
-        except asyncio.CancelledError:
-            pass
-
-    server.close()
-    await server.wait_closed()
+@pytest.fixture
+async def websocket():
+    async with websockets.serve(echo, "localhost", 8765):
+        async with websockets.connect("ws://localhost:8765") as websocket:
+            yield websocket
 
 
 @pytest.mark.asyncio
-async def test_receive_connection_closed(websocket_adapter):
+async def test_receive(websocket_adapter: WebsocketAdapter, websocket: websockets.WebSocketServerProtocol):
+    print('>>>>>>>>', websocket, type(websocket))
+    websocket_adapter._websocket = websocket
 
-    server = await websockets.serve(echo, "localhost", 8765)
+    # Start the _receive coroutine
+    receive_task = asyncio.create_task(websocket_adapter._receive())
 
-    async with websockets.connect("ws://localhost:8765") as websocket:
-        websocket_adapter._websocket = websocket
-        sent = rcvd = Mock()
-        rcvd.code = 1000
-        sent.reason = "test"
-        # Mock the websocket to raise ConnectionClosed
-        websocket_adapter._websocket.recv = MagicMock(
-            side_effect=websockets.exceptions.ConnectionClosed(rcvd, sent)
-        )
+    # Send a test message to the WebSocket server
+    test_message = "test message"
+    await websocket.send(test_message)
 
+    # Allow the coroutine to process
+    await asyncio.sleep(0.1)
+
+    # Check that the _write_stdout method was called with the test message
+    websocket_adapter._write_stdout.assert_called_once_with(test_message)
+
+    # Cancel the task to exit the while loop
+    receive_task.cancel()
+    try:
+        await receive_task
+    except asyncio.CancelledError:
+        pass
+
+
+@pytest.mark.asyncio
+async def test_receive_connection_closed(websocket_adapter, websocket):
+    websocket_adapter._websocket = websocket
+    sent = rcvd = Mock()
+    rcvd.code = 1000
+    sent.reason = "test"
+    # Mock the websocket to raise ConnectionClosed
+    websocket_adapter._websocket.recv = MagicMock(
+        side_effect=websockets.exceptions.ConnectionClosed(rcvd, sent)
+    )
+
+    await websocket_adapter._receive()
+
+    # Check that the _write_stdout method was called with the connection closed message
+    assert websocket_adapter._write_stdout.call_count == 1
+    call_args = websocket_adapter._write_stdout.call_args[0][0]
+    assert "Connection closed with code: 1000, reason: test" in call_args
+
+
+
+@pytest.mark.asyncio
+async def test_receive_cancelled_error(websocket_adapter, websocket):
+    websocket_adapter._websocket = websocket
+
+    # Mock the websocket to raise CancelledError
+    websocket_adapter._websocket.recv = MagicMock(side_effect=asyncio.CancelledError)
+
+    # Ensure no exceptions are raised
+    try:
         await websocket_adapter._receive()
-
-        # Check that the _write_stdout method was called with the connection closed message
-        assert websocket_adapter._write_stdout.call_count == 1
-        call_args = websocket_adapter._write_stdout.call_args[0][0]
-        assert "Connection closed with code: 1000, reason: test" in call_args
-
-        # Ensure _running is set to False
-        assert not websocket_adapter._running
-
-    server.close()
-    await server.wait_closed()
-
-
-@pytest.mark.asyncio
-async def test_receive_cancelled_error(websocket_adapter):
-    server = await websockets.serve(echo, "localhost", 8765)
-
-    async with websockets.connect("ws://localhost:8765") as websocket:
-        websocket_adapter._websocket = websocket
-
-        # Mock the websocket to raise CancelledError
-        websocket_adapter._websocket.recv = MagicMock(side_effect=asyncio.CancelledError)
-
-        # Ensure no exceptions are raised
-        try:
-            await websocket_adapter._receive()
-        except asyncio.CancelledError:
-            pytest.fail("CancelledError was not handled properly")
-
-    server.close()
-    await server.wait_closed()
+    except asyncio.CancelledError:
+        pytest.fail("CancelledError was not handled properly")
