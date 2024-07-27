@@ -1,4 +1,5 @@
 import asyncio
+import random
 
 import pytest
 import websockets.exceptions
@@ -17,10 +18,10 @@ async def test_send_messages():
         async for msg in _websocket:
             received.append(msg)
             await _websocket.send(msg)
+    port = random.randint(10000, 20000)
+    server = await websockets.serve(echo, "localhost", port)
 
-    server = await websockets.serve(echo, "localhost", 8765)
-
-    async with websockets.connect("ws://localhost:8765") as websocket:
+    async with websockets.connect(f"ws://localhost:{port}") as websocket:
         adapter._websocket = websocket
 
         test_messages = ["Message 1", "Message 2"]

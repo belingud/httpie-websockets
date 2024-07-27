@@ -37,6 +37,8 @@ httpie_websocket = "httpie_websockets:WebsocketPlugin"
 addopts = "-rsxX -l --tb=short --strict"
 testpaths = ["tests/"]
 python_files = ["test*.py"]
+asyncio_mode = "auto"
+markers = ["skipif: conditionally skip tests"]
 
 [tool.pdm]
 distribution = true
