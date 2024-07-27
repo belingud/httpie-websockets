@@ -1,6 +1,6 @@
 [project]
 name = "httpie-websockets"
-version = "0.2.1"
+version = "0.3.0"
 description = "Websocket plugin for httpie"
 authors = [
     { name = "belingud", email = "1170202353@qq.com" }
