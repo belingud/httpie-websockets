@@ -13,7 +13,7 @@ from requests.adapters import BaseAdapter
 from requests.models import PreparedRequest, Response
 from requests.structures import CaseInsensitiveDict
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 IS_WINDOWS = platform.system().lower() == "windows"
 if IS_WINDOWS:
     import msvcrt
