@@ -1,9 +1,8 @@
 import asyncio
 import io
-import select
+import platform
 import sys
 import threading
-import warnings
 from concurrent.futures import ThreadPoolExecutor
 from typing import AnyStr, AsyncIterable, Iterable, Optional
 
@@ -14,23 +13,65 @@ from requests.adapters import BaseAdapter
 from requests.models import PreparedRequest, Response
 from requests.structures import CaseInsensitiveDict
 
-warnings.simplefilter("ignore", category=RuntimeWarning)
-__version__ = "0.2.1"
+__version__ = "0.3.0"
+IS_WINDOWS = platform.system().lower() == "windows"
+if IS_WINDOWS:
+    import msvcrt
+
+    def _read_stdin():
+        if msvcrt.kbhit():
+            input_buffer = ""
+            while True:
+                char = msvcrt.getwche()
+                if char == "\r":  # Enter key
+                    print()
+                    break
+                input_buffer += char
+            return input_buffer.strip()
+        return None
+else:
+    import select
+
+    def _read_stdin():
+        r, _, _ = select.select([sys.stdin], [], [], 1)
+        if sys.stdin in r:
+            return sys.stdin.readline().strip()
+        return None
 
 
 class AdapterError(Exception):
+    """Custom exception for adapter errors."""
+
     def __init__(self, code: int, msg: str) -> None:
+        """Initialize the AdapterError exception.
+
+        Args:
+            code (int): The error code.
+            msg (str): The error message.
+        """
         self.code = code
         self.msg = msg
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return the string representation of the exception.
+
+        Returns:
+            str: The error code and message.
+        """
         return f"{self.code}: {self.msg}"
 
 
 class WebsocketAdapter(BaseAdapter):
+    """Adapter for handling WebSocket connections."""
+
     EXIT_KEY_WORDS = ("exit", "quit")
 
     def __init__(self, queue_size: int = 1024):
+        """Initialize the WebsocketAdapter.
+
+        Args:
+            queue_size (int): The size of the message queue.
+        """
         super().__init__()
         self._msg_queue = asyncio.Queue(queue_size)
         self._running = False
@@ -39,15 +80,14 @@ class WebsocketAdapter(BaseAdapter):
         # tasks
         self._receive_task: Optional[asyncio.Task] = None
         self._send_task: Optional[asyncio.Task] = None
-        self._run_task: Optional[asyncio.Task] = None
 
         # websocket loop
         self._ws_loop = asyncio.new_event_loop()
         self._ws_thread = threading.Thread(
             target=self.start_loop, args=(self._ws_loop,), name="WSThread"
         )
-        self._loop_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="WSAdapter")
-        self._ws_loop.set_default_executor(self._loop_executor)
+        # websocket connection is running in an executor
+        self._ws_loop.set_default_executor(ThreadPoolExecutor(max_workers=5, thread_name_prefix="WSAdapter"))
 
         # std
         self._stdout = sys.stdout
@@ -76,7 +116,7 @@ class WebsocketAdapter(BaseAdapter):
         """
         if not self._websocket or not self._websocket.open:
             try:
-                self._websocket = await websockets.connect(websocket_url)
+                self._websocket = await websockets.connect(websocket_url, close_timeout=4)
             except OSError:
                 # Connect failed
                 raise AdapterError(500, "Cannot connect to websocket") from None
@@ -103,7 +143,6 @@ class WebsocketAdapter(BaseAdapter):
                 self._write_stdout(message)
             except websockets.ConnectionClosed as e:
                 self._write_stdout(f"Connection closed with code: {e.code}, reason: {e.reason}")
-                self._running = False
                 await self.put(None)
                 break
             except RuntimeError as e:
@@ -111,7 +150,6 @@ class WebsocketAdapter(BaseAdapter):
                 # Another coroutine is already receiving a message
                 # Should not happen since _receive is called only once.
                 self._write_stdout(str(e))
-                self._running = False
                 await self.put(None)
                 break
             except asyncio.CancelledError:
@@ -125,7 +163,6 @@ class WebsocketAdapter(BaseAdapter):
             try:
                 message = await self._msg_queue.get()
                 if message is None:
-                    self._running = False
                     break
                 if message:
                     if not isinstance(message, (bytes, str, Iterable, AsyncIterable)):
@@ -136,37 +173,38 @@ class WebsocketAdapter(BaseAdapter):
                     await self._websocket.send(message)
             except websockets.ConnectionClosed as e:
                 self._write_stdout(f"Connection closed with code: {e.code}, reason: {e.reason}")
-                self._running = False
                 break
             except asyncio.CancelledError:
                 break
 
-    async def _run(self):
-        """
-        Connect to the websocket, run ReceiveTask and SendTask
-        """
-        # await self._connect(websocket_url)
-        self._receive_task = asyncio.create_task(self._receive())
-        self._send_task = asyncio.create_task(self._send_messages())
+    async def _run_tasks(self):
+        self._receive_task = asyncio.create_task(self._receive(), name="_receive_task")
+        self._send_task = asyncio.create_task(self._send_messages(), name="_send_task")
         try:
             await asyncio.gather(self._receive_task, self._send_task)
-        except Exception:  # noqa
-            # No stacktrace in stdout
+        except Exception: # noqa
+            # No stdout
             pass
 
     def read_stdin(self) -> Optional[str]:
+        """Read input from stdin synchronously.
+
+        Returns:
+            Optional[str]: The input read from stdin, or None if no input is available.
         """
-        Read input from stdin, non-blocking
-        Only support on unix like system
-        TODO: support windows
-        Returns: striped str
-        """
-        r, w, e = select.select([sys.stdin], [], [], 0.5)
-        if not r:
-            return
-        return sys.stdin.readline().strip()
+        if not self._running:
+            return None
+        return _read_stdin()
 
     def send(self, request, **kwargs):
+        """Send a request to the WebSocket.
+
+        Args:
+            request (PreparedRequest): The request to send.
+
+        Returns:
+            Response: The response details from the WebSocket.
+        """
         websocket_url = request.url
         self._ws_thread.start()
         try:
@@ -182,8 +220,7 @@ class WebsocketAdapter(BaseAdapter):
         )
 
         try:
-            self._run_task = self._run()
-            asyncio.run_coroutine_threadsafe(self._run_task, self._ws_loop)
+            asyncio.run_coroutine_threadsafe(self._run_tasks(), self._ws_loop)
 
             # Read input messages and put them in the queue
             while self._running:
@@ -192,13 +229,15 @@ class WebsocketAdapter(BaseAdapter):
                     continue
                 if msg.lower() in self.EXIT_KEY_WORDS:
                     break
-                assert self._running, f"Websocket closed, message {msg} not sent"
+                if not self._running:
+                    self._write_stdout(f"Websocket closed, message {msg} not sent")
+                    break
                 asyncio.run_coroutine_threadsafe(self.put(msg), self._ws_loop).result()
         except KeyboardInterrupt:
             self._write_stdout(
                 "\nKeyboardInterrupt received. Cleaning up, press Ctrl+C again to exit force."
             )
-            # ensure send message task quits
+            # Ensure send message task quits
             asyncio.run_coroutine_threadsafe(self.put(None), self._ws_loop).result()
         finally:
             self.close()
@@ -208,7 +247,7 @@ class WebsocketAdapter(BaseAdapter):
         """
         Write message to stdout
         Args:
-            msg:
+            msg (AnyStr): The message to write.
         """
         if not self._running:
             return
@@ -223,11 +262,12 @@ class WebsocketAdapter(BaseAdapter):
         """
         Create a dummy response for requests send method
         Args:
-            request:
-            status_code(int):
-            msg(str): Message to show on stdout
+            request (PreparedRequest): The request to respond to.
+            status_code (int): The status code of the response.
+            msg (str): The message to include in the response.
 
-        Returns: requests.Response
+        Returns:
+            Response: The dummy response.
         """
         r = Response()
         r.status_code = status_code
@@ -249,54 +289,69 @@ class WebsocketAdapter(BaseAdapter):
         r.url = request.url
         return r
 
-    def close(self):
+    def close(self) -> None:
+        """Close the WebSocket connection and clean up resources."""
+        if self._running is False:
+            return
         self._running = False
         try:
             asyncio.run_coroutine_threadsafe(self._close(), self._ws_loop).result()
-            self._ws_loop.call_soon_threadsafe(self._ws_loop.stop)
-            self._ws_thread.join()
-            self._loop_executor.shutdown(wait=False)
-            self._ws_loop.close()
         except Exception:  # noqa
             # No stacktrace in stdout
             pass
+        finally:
+            self._ws_loop.call_soon_threadsafe(self._ws_loop.stop)
+            self._ws_thread.join()
+            self._ws_loop.close()
 
     async def _close(self):
         if self._websocket and self._websocket.open:
             await self._websocket.close(code=1000, reason="Closed by user")
-        await self.cancel_all_tasks()
-
-    async def cancel_all_tasks(self):
+            await self._websocket.wait_closed()
         for task in asyncio.all_tasks(self._ws_loop):
             if not task.done():
+                task.cancel()
                 try:
-                    task.cancel()
                     await task
                 except asyncio.CancelledError:
                     pass
 
-    async def put(self, msg):
+    async def put(self, msg: Optional[AnyStr]) -> None:
+        """Put a message into the message queue.
+
+        Args:
+            msg (Optional[AnyStr]): The message to put into the queue.
+        """
         await self._msg_queue.put(msg)
 
 
-class WebsocketPlugin(TransportPlugin):
-    name = "websocket"
+class BaseWebsocketPlugin(TransportPlugin):
+    """Base class for WebSocket transport plugins."""
+
     package_name = "httpie_websockets"
-    prefix = "ws://"
     description = "WebSocket transport plugin for HTTPie"
 
-    def get_adapter(self):
+    def get_adapter(self) -> WebsocketAdapter:
+        """Get the WebSocket adapter.
+
+        Returns:
+            WebsocketAdapter: The WebSocket adapter.
+        """
         return WebsocketAdapter()
 
 
-class WebsocketSPlugin(TransportPlugin):
-    package_name = "httpie_websockets"
+class WebsocketPlugin(BaseWebsocketPlugin):
+    """Plugin for handling WebSocket connections over HTTP."""
+
+    name = "websocket"
+    prefix = "ws://"
+
+
+class WebsocketSPlugin(BaseWebsocketPlugin):
+    """Plugin for handling secure WebSocket connections over HTTPS."""
+
     name = "websocket-s"
     prefix = "wss://"
-    description = "Secure WebSocket transport plugin for HTTPie"
-
-    def get_adapter(self):
-        return WebsocketAdapter()
 
 
 if __name__ == "__main__":
@@ -310,5 +365,5 @@ if __name__ == "__main__":
     session = requests.Session()
     session.mount("ws://", adapter)
     session.mount("wss://", adapter)
-    session.request("WEBSOKET", args.url)
+    session.request("WEBSOCKET", args.url)
     session.close()

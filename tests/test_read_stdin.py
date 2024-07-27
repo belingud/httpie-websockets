@@ -1,43 +1,20 @@
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import pytest
 
-from httpie_websockets import WebsocketAdapter
+from httpie_websockets import _read_stdin, IS_WINDOWS
 
 
-@pytest.fixture
-def mock_select(mocker):
-    return mocker.patch("select.select")
+@pytest.mark.skipif(not IS_WINDOWS, reason="Requires Windows platform")
+def test_read_stdin_windows(monkeypatch):
+    with patch("msvcrt.kbhit", return_value=True):
+        with patch("msvcrt.getwche", side_effect=list("test_input") + ["\r"]):
+            assert _read_stdin() == "test_input"
 
 
-@pytest.fixture
-def mock_stdin(mocker):
-    return mocker.patch("sys.stdin", new_callable=MagicMock)
-
-
-def test_read_stdin_no_input(mock_select, mock_stdin):
-    # Create an instance of WebsocketAdapter
-    adapter = WebsocketAdapter()
-
-    # Mock select.select to simulate no input
-    mock_select.return_value = ([], [], [])
-
-    # Call the method and check the result
-    result = adapter.read_stdin()
-    assert result is None
-
-
-def test_read_stdin_with_input(mock_select, mock_stdin):
-    # Create an instance of WebsocketAdapter
-    adapter = WebsocketAdapter()
-
-    # Mock select.select to simulate input
-    mock_select.return_value = ([sys.stdin], [], [])
-
-    # Mock sys.stdin to simulate user input
-    mock_stdin.readline.return_value = "test input\n"
-
-    # Call the method and check the result
-    result = adapter.read_stdin()
-    assert result == "test input"
+@pytest.mark.skipif(IS_WINDOWS, reason="Requires non-Windows platform")
+def test_read_stdin_non_windows(monkeypatch):
+    with patch("select.select", return_value=([sys.stdin], [], [])):
+        with patch("sys.stdin.readline", return_value="test_input\n"):
+            assert _read_stdin() == "test_input"

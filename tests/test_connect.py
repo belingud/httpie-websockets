@@ -15,7 +15,7 @@ async def test_connect():
 
         await adapter._connect(test_url)
 
-    mock_connect.assert_awaited_once_with(test_url)
+    mock_connect.assert_awaited_once_with(test_url, close_timeout=4)
 
     assert adapter._websocket is not None
     assert adapter._websocket.open
