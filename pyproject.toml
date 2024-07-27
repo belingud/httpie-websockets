@@ -28,6 +28,7 @@ classifiers = [
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
+
 [project.entry-points."httpie.plugins.transport.v1"]
 httpie_websockets = "httpie_websockets:WebsocketSPlugin"
 httpie_websocket = "httpie_websockets:WebsocketPlugin"
@@ -36,6 +37,7 @@ httpie_websocket = "httpie_websockets:WebsocketPlugin"
 addopts = "-rsxX -l --tb=short --strict"
 testpaths = ["tests/"]
 python_files = ["test*.py"]
+
 [tool.pdm]
 distribution = true
 
