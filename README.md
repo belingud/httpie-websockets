@@ -1,21 +1,19 @@
 # httpie-websockets
 
-[![PyPI version](https://img.shields.io/pypi/v/httpie-websockets?style=for-the-badge)](https://pypi.org/project/httpie-websockets/) [![License](https://img.shields.io/github/license/belingud/httpie-websockets.svg?style=for-the-badge)](https://opensource.org/licenses/MIT) ![Static Badge](https://img.shields.io/badge/language-Python-%233572A5?style=for-the-badge) ![PyPI - Downloads](https://img.shields.io/pypi/dm/httpie-websockets?logo=pypi&style=for-the-badge) ![Pepy Total Downlods](https://img.shields.io/pepy/dt/httpie-websockets?style=for-the-badge&logo=python)
+[![PyPI version](https://img.shields.io/pypi/v/httpie-websockets?style=for-the-badge)](https://pypi.org/project/httpie-websockets/) [![License](https://img.shields.io/github/license/belingud/httpie-websockets.svg?style=for-the-badge)](https://opensource.org/licenses/MIT) ![Static Badge](https://img.shields.io/badge/language-Python-%233572A5?style=for-the-badge) ![PyPI - Downloads](https://img.shields.io/pypi/dm/httpie-websockets?logo=python&style=for-the-badge) ![Pepy Total Downlods](https://img.shields.io/pepy/dt/httpie-websockets?style=for-the-badge&logo=python)
 
 Home: https://github.com/belingud/httpie-websockets
 
-`httpie-websockets` is an HTTPie CLI plugin that adds WebSocket support to the HTTPie command line.
-
 
 <!-- TOC -->
-
 * [httpie-websockets](#httpie-websockets)
-    * [Features](#features)
-    * [Install](#install)
-    * [Usage](#usage)
-    * [Uninstall](#uninstall)
-
+  * [Features](#features)
+  * [Install](#install)
+  * [Usage](#usage)
+  * [Uninstall](#uninstall)
 <!-- TOC -->
+
+`httpie-websockets` is an HTTPie CLI plugin that adds WebSocket support to the HTTPie command line.
 
 ## Features
 
