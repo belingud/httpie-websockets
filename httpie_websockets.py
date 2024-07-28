@@ -13,7 +13,7 @@ from requests.adapters import BaseAdapter
 from requests.models import PreparedRequest, Response
 from requests.structures import CaseInsensitiveDict
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 IS_WINDOWS = platform.system().lower() == "windows"
 if IS_WINDOWS:
     import msvcrt
@@ -205,15 +205,15 @@ class WebsocketAdapter(BaseAdapter):
         Returns:
             Response: The response details from the WebSocket.
         """
-        websocket_url = request.url
+        self._running = True
         self._ws_thread.start()
         try:
-            asyncio.run_coroutine_threadsafe(self._connect(websocket_url), self._ws_loop).result()
+            asyncio.run_coroutine_threadsafe(self._connect(request.url), self._ws_loop).result()
         except AdapterError as e:
             self.close()
             return self.dummy_response(request, e.code, e.msg)
-        self._running = True
-        self._write_stdout(f"> {websocket_url}")
+
+        self._write_stdout(f"> {request.method} {request.url}")
         self._write_stdout("Type a message and press enter to send it")
         self._write_stdout(
             f"Type {', '.join(repr(i) for i in self.EXIT_KEY_WORDS)} or press Ctrl+C to close the connection"
@@ -355,6 +355,10 @@ class WebsocketSPlugin(BaseWebsocketPlugin):
 
 
 if __name__ == "__main__":
+    from httpie.__main__ import main
+
+    main()
+    exit()
     import argparse
 
     parser = argparse.ArgumentParser(prog="python -m httpie_websocket")
