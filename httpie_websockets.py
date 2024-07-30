@@ -12,7 +12,7 @@ from requests.adapters import BaseAdapter
 from requests.models import PreparedRequest, Response
 from requests.structures import CaseInsensitiveDict
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 __author__ = "belingud"
 __license__ = "MIT"
 if platform.system().lower() == "windows":
