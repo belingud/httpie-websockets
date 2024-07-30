@@ -6,7 +6,6 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import AnyStr, AsyncIterable, Iterable, Optional
 
-import requests
 import websockets
 from httpie.plugins import TransportPlugin
 from requests.adapters import BaseAdapter
@@ -14,8 +13,9 @@ from requests.models import PreparedRequest, Response
 from requests.structures import CaseInsensitiveDict
 
 __version__ = "0.3.1"
-IS_WINDOWS = platform.system().lower() == "windows"
-if IS_WINDOWS:
+__author__ = "belingud"
+__license__ = "MIT"
+if platform.system().lower() == "windows":
     import msvcrt
 
     def _read_stdin():
@@ -64,8 +64,6 @@ class AdapterError(Exception):
 class WebsocketAdapter(BaseAdapter):
     """Adapter for handling WebSocket connections."""
 
-    EXIT_KEY_WORDS = ("exit", "quit")
-
     def __init__(self, queue_size: int = 1024):
         """Initialize the WebsocketAdapter.
 
@@ -87,7 +85,9 @@ class WebsocketAdapter(BaseAdapter):
             target=self.start_loop, args=(self._ws_loop,), name="WSThread"
         )
         # websocket connection is running in an executor
-        self._ws_loop.set_default_executor(ThreadPoolExecutor(max_workers=5, thread_name_prefix="WSAdapter"))
+        self._ws_loop.set_default_executor(
+            ThreadPoolExecutor(max_workers=5, thread_name_prefix="WSAdapter")
+        )
 
         # std
         self._stdout = sys.stdout
@@ -95,7 +95,13 @@ class WebsocketAdapter(BaseAdapter):
 
     @property
     def running(self):
+        """Check if the websocket loop is running"""
         return self._running
+
+    @property
+    def connected(self):
+        """Check if the websocket is open"""
+        return self._websocket and self._websocket.open
 
     def start_loop(self, thread_loop):
         """
@@ -142,7 +148,7 @@ class WebsocketAdapter(BaseAdapter):
                 message = await self._websocket.recv()
                 self._write_stdout(message)
             except websockets.ConnectionClosed as e:
-                self._write_stdout(f"Connection closed with code: {e.code}, reason: {e.reason}")
+                self._write_stdout(f"Connection closed when listening with code: {e.code}, reason: {e.reason}")
                 await self.put(None)
                 break
             except RuntimeError as e:
@@ -172,7 +178,7 @@ class WebsocketAdapter(BaseAdapter):
                         )
                     await self._websocket.send(message)
             except websockets.ConnectionClosed as e:
-                self._write_stdout(f"Connection closed with code: {e.code}, reason: {e.reason}")
+                self._write_stdout(f"Connection closed when sending with code: {e.code}, reason: {e.reason}")
                 break
             except asyncio.CancelledError:
                 break
@@ -182,7 +188,7 @@ class WebsocketAdapter(BaseAdapter):
         self._send_task = asyncio.create_task(self._send_messages(), name="_send_task")
         try:
             await asyncio.gather(self._receive_task, self._send_task)
-        except Exception: # noqa
+        except Exception:  # noqa
             # No stdout
             pass
 
@@ -213,23 +219,21 @@ class WebsocketAdapter(BaseAdapter):
             self.close()
             return self.dummy_response(request, e.code, e.msg)
 
-        self._write_stdout(f"> {request.method} {request.url}")
-        self._write_stdout("Type a message and press enter to send it")
         self._write_stdout(
-            f"Type {', '.join(repr(i) for i in self.EXIT_KEY_WORDS)} or press Ctrl+C to close the connection"
+            f"> Connected to {request.url}\n"
+            "Type a message and press enter to send it\n"
+            "Press Ctrl+C to close the connection"
         )
 
         try:
             asyncio.run_coroutine_threadsafe(self._run_tasks(), self._ws_loop)
 
             # Read input messages and put them in the queue
-            while self._running:
+            while self._running and self.connected:
                 msg = self.read_stdin()
                 if not msg:
                     continue
-                if msg.lower() in self.EXIT_KEY_WORDS:
-                    break
-                if not self._running:
+                if not self._running or not self.connected:
                     self._write_stdout(f"Websocket closed, message {msg} not sent")
                     break
                 asyncio.run_coroutine_threadsafe(self.put(msg), self._ws_loop).result()
@@ -243,7 +247,7 @@ class WebsocketAdapter(BaseAdapter):
             self.close()
         return self.dummy_response(request)
 
-    def _write_stdout(self, msg: AnyStr):
+    def _write_stdout(self, msg: AnyStr, newline: bool = True) -> None:
         """
         Write message to stdout
         Args:
@@ -253,7 +257,7 @@ class WebsocketAdapter(BaseAdapter):
             return
         with self._stdout_lock:
             self._stdout.write(msg)
-            self._stdout.write("\n")
+            newline and self._stdout.write("\n")
             self._stdout.flush()
 
     def dummy_response(
@@ -355,11 +359,8 @@ class WebsocketSPlugin(BaseWebsocketPlugin):
 
 
 if __name__ == "__main__":
-    from httpie.__main__ import main
-
-    main()
-    exit()
     import argparse
+    import requests
 
     parser = argparse.ArgumentParser(prog="python -m httpie_websocket")
     parser.add_argument("url")
