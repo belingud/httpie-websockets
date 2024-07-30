@@ -71,7 +71,7 @@ async def test_receive_connection_closed(websocket_adapter, websocket):
     # Check that the _write_stdout method was called with the connection closed message
     assert websocket_adapter._write_stdout.call_count == 1
     call_args = websocket_adapter._write_stdout.call_args[0][0]
-    assert "Connection closed with code: 1000, reason: test" in call_args
+    assert "Connection closed when listening with code: 1000, reason: test" in call_args
 
 
 

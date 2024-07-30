@@ -1,9 +1,12 @@
+import platform
 import sys
 from unittest.mock import patch
 
 import pytest
 
-from httpie_websockets import _read_stdin, IS_WINDOWS
+from httpie_websockets import _read_stdin
+
+IS_WINDOWS = platform.system().lower() == "windows"
 
 
 @pytest.mark.skipif(not IS_WINDOWS, reason="Requires Windows platform")

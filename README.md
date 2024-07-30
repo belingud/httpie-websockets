@@ -83,4 +83,3 @@ Installed by `pip` command, uninstall by
 ```shell
 pip uninstall httpie-websockets
 ```
-
