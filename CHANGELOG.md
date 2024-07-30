@@ -1,3 +1,12 @@
+## New in 0.4.0
+
+1. Can not type exit or quit to close
+2. Fix hangup when closed by server
+
+## New in 0.3.1
+
+1. fix hangup when cannot connect server
+
 ## New in 0.3.0
 
 1. Windows command line support
