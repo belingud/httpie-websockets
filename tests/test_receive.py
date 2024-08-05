@@ -31,7 +31,6 @@ async def websocket():
 
 @pytest.mark.asyncio
 async def test_receive(websocket_adapter: WebsocketAdapter, websocket: websockets.WebSocketServerProtocol):
-    print('>>>>>>>>', websocket, type(websocket))
     websocket_adapter._websocket = websocket
 
     # Start the _receive coroutine

@@ -19,6 +19,7 @@ if platform.system().lower() == "windows":
     import msvcrt
 
     def _read_stdin():
+        """Read input for Windows"""
         if msvcrt.kbhit():
             input_buffer = ""
             while True:
@@ -33,6 +34,7 @@ else:
     import select
 
     def _read_stdin():
+        """Read input for Linux"""
         r, _, _ = select.select([sys.stdin], [], [], 1)
         if sys.stdin in r:
             return sys.stdin.readline().strip()
@@ -360,6 +362,7 @@ class WebsocketSPlugin(BaseWebsocketPlugin):
 
 if __name__ == "__main__":
     import argparse
+
     import requests
 
     parser = argparse.ArgumentParser(prog="python -m httpie_websocket")

@@ -43,6 +43,9 @@ markers = ["skipif: conditionally skip tests"]
 [tool.pdm]
 distribution = true
 
+[tool.isort]
+profile = "black"
+
 [tool.pdm.build]
 excludes = ["tests", ".idea/", ".vscode", ".venv", "pdm.lock", ".gitignore", "var"]
 includes = ["httpie_websockets.py"]

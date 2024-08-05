@@ -1,0 +1,6 @@
+services:
+  websocket-server:
+    build:
+      context: ./ws_server
+    ports:
+      - "8765:8765"

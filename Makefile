@@ -14,6 +14,13 @@ check: ## Run code quality tools.
 	@echo "🚀 Checking for obsolete dependencies: Running deptry"
 	@pdm run deptry .
 
+.PHONY: format
+format: ## Format code with ruff and isort
+	@echo "🚀 Formatting code: Running ruff"
+	@pdm run ruff check --fix . --config pyproject.toml
+	@echo "🚀 Formatting code: Running isort"
+	@pdm run isort . --settings-path pyproject.toml
+
 .PHONY: test
 test: ## Test the code with pytest.
 	@echo "🚀 Testing code: Running pytest"
