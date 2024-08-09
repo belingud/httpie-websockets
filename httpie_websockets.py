@@ -362,11 +362,24 @@ class WebsocketSPlugin(BaseWebsocketPlugin):
 
 if __name__ == "__main__":
     import argparse
+    from urllib.parse import urlparse
 
     import requests
 
+
+    def validate_url(url):
+        try:
+            result = urlparse(url)
+            if result.scheme and result.netloc:
+                return url
+            else:
+                raise argparse.ArgumentTypeError("Invalid URL: '{0}'".format(url))
+        except Exception:
+            raise argparse.ArgumentTypeError("Invalid URL: '{0}'".format(url)) from None
+
     parser = argparse.ArgumentParser(prog="python -m httpie_websocket")
-    parser.add_argument("url")
+    # 添加url参数并验证是否是正确的url
+    parser.add_argument("url", help="The URL to connect to.", type=validate_url)
     args = parser.parse_args()
 
     adapter = WebsocketAdapter()
