@@ -1,4 +1,6 @@
 import io
+import logging
+import os
 import platform
 import queue
 import ssl
@@ -16,12 +18,18 @@ from httpie.ssl_ import HTTPieCertificate
 from requests.adapters import BaseAdapter
 from requests.models import PreparedRequest, Response
 from requests.structures import CaseInsensitiveDict
+from websocket import STATUS_ABNORMAL_CLOSED
 
 __version__ = "0.4.0"
 __author__ = "belingud"
 __license__ = "MIT"
 
-from websocket import STATUS_ABNORMAL_CLOSED
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    format="%(asctime)s %(levelname)s %(filename)s:%(lineno)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger.setLevel(os.getenv("HTTPIE_WS_LOG_LEVEL", "WARNING").upper())
 
 if platform.system().lower() == "windows":
     import msvcrt
@@ -123,23 +131,21 @@ class WebsocketAdapter(BaseAdapter):
         options: dict[str, Any] = {}
 
         proxy = kwargs.get("proxies")
-        print(f"proxies: {proxy}")
+        logger.debug(f"proxies: {proxy}")
         if proxy:
-            idx = 0
             ignored = []
             proxy_url = None
-            for scheme, host_port in proxy.items():
+            for idx, (scheme, host_port) in enumerate(proxy.items()):
                 if idx > 0:
                     ignored.append(f"{scheme}://{host_port}")
                     continue
                 proxy_url = urlparse(scheme + "://" + host_port)
                 options["http_proxy_host"] = f"{proxy_url.scheme}://{proxy_url.hostname}"
                 options["http_proxy_port"] = proxy_url.port
-                idx += 1
             if ignored:
                 msg = "\033[93mWarning: "
                 if proxy_url:
-                    msg += f"Using proxy {proxy_url.geturl()}, "
+                    msg += f"Using proxy {proxy_url.geturl()}. "
                 msg += f"Proxy {', '.join(ignored)} is ignored because multiple proxies are not supported.\033[0m"
                 self._write_stdout(msg)
 
@@ -191,26 +197,6 @@ class WebsocketAdapter(BaseAdapter):
             except OSError:
                 break
 
-    def _send_messages(self):
-        """Send messages to the WebSocket."""
-        while self._running:
-            if not self._msg_queue:
-                continue
-            message = self._msg_queue.get()
-            if message is None:
-                break
-            try:
-                self._ws.send(message)
-            except websocket.WebSocketConnectionClosedException as e:
-                self._write_stdout(f"Connection closed: {str(e)}")
-                break
-            except websocket.WebSocketTimeoutException as e:
-                self._write_stdout(f"WebSocketTimeoutException: {str(e)}")
-                continue
-            except Exception as e:
-                self._write_stdout(f"Error: {str(e)}")
-                break
-
     def _run(self):
         """Run the WebSocket communication."""
         try:
@@ -223,6 +209,9 @@ class WebsocketAdapter(BaseAdapter):
     ):
         """Send a request to the WebSocket.
 
+        Will receive a string if only passed `--cert=path/to/cert`,
+        or a HTTPieCertificate object if `--cert-key` passed, like `--cert=path/to/cert --cert-key=path/to/key`
+
         Args:
             request (PreparedRequest): The request object.
             stream (bool): Whether to stream the response.
@@ -233,11 +222,11 @@ class WebsocketAdapter(BaseAdapter):
             **kwargs: Additional keyword arguments.
 
         Returns:
-            Response: The response object.
+            Response: Handshake response info.
         """
         self._running = True
-        print(
-            f">??????????????????{cert}, verify: {verify}, proxy: {proxies}, timeout: {timeout}, kwargs: {kwargs}"
+        logger.debug(
+            f"ws connecting. stream: {stream}, cert: {cert}, verify: {verify}, proxy: {proxies}, timeout: {timeout}"
         )
 
         try:
@@ -249,7 +238,7 @@ class WebsocketAdapter(BaseAdapter):
             return self.dummy_response(request, e.code, e.msg)
 
         self._ws_thread.start()
-        time.sleep(0.2)
+        time.sleep(0.3)
         self._write_stdout(
             f"> Connected to {request.url}\n"
             "Type a message and press enter to send it\n"
@@ -262,11 +251,11 @@ class WebsocketAdapter(BaseAdapter):
                 if not msg:
                     continue
                 if not self._running or not self._ws.connected:
-                    self._write_stdout("Websocket closed, message not sent")
+                    self._write_stdout(f"Websocket closed, message not sent: {msg}")
                     break
-                self._ws.send_text(msg)
+                self.send_msg(msg)
         except KeyboardInterrupt:
-            self._write_stdout("\nKeyboardInterrupt received. Cleaning up...")
+            self._write_stdout("\nOops! Disconnecting. Need to force quit? Press again!")
         finally:
             self.close()
 
@@ -296,7 +285,7 @@ class WebsocketAdapter(BaseAdapter):
             msg.encode("utf8")
             if msg
             else (
-                f"Status: {self._ws.getstatus()}\nSubprotocol: {self._ws.getsubprotocol() or ''}".encode(
+                f"Status: {self._ws.getstatus()}".encode(
                     "utf8"
                 )
             )
@@ -314,6 +303,11 @@ class WebsocketAdapter(BaseAdapter):
             self._ws.close(status=STATUS_ABNORMAL_CLOSED, reason=b"Connection closed by user")
         if self._ws_thread.is_alive():
             self._ws_thread.join()
+
+    def send_msg(self, message: str) -> int:
+        length: int = self._ws.send_text(message)
+        logger.debug(f"Sent message: {message}, frame length: {length}")
+        return length
 
 
 class BaseWebsocketPlugin(TransportPlugin):
@@ -353,5 +347,9 @@ if __name__ == "__main__":
     session.mount("ws://", adapter)
     session.mount("wss://", adapter)
     resp = session.request("WEBSOCKET", args.url)
-    print(resp.text)
+    print('\n'.join(f"{k}: {v}" for k, v in resp.headers.items()), end='\n\n')
+    try:
+        print(resp.json(indent=4))
+    except requests.JSONDecodeError:
+        print(resp.text)
     session.close()
