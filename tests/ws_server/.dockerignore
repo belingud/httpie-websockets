@@ -1,0 +1,14 @@
+.idea
+.dockerignore
+
+target/
+
+*.py[cod]*
+
+__pycache__/
+
+.env
+
+.git
+
+.vscode

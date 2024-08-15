@@ -1,0 +1,7 @@
+services:
+  websocket-server:
+    container_name: test-ws-server
+    build:
+      context: ./ws_server
+    ports:
+      - "8765:8765"

@@ -1,3 +1,9 @@
+## New in 0.5.0
+
+1. Support proxy passed by httpie, like `http wss://echo.websocket.org --proxy=http://proxy.server`
+2. Support custom ssl cert file with httpie, like `http wss://echo.websocket.org --cery=/path/to/cert`
+3. Set env `HTTPIE_WS_LOG_LEVEL` to `DEBUG` to see more debug info from httpie_websockets
+
 ## New in 0.4.0
 
 1. Can not type exit or quit to close

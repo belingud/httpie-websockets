@@ -8,10 +8,10 @@ from httpie_websockets import WebsocketAdapter
 def test_dummy_response():
     adapter = WebsocketAdapter()
     mock_websocket = Mock()
-    adapter._websocket = mock_websocket
-    mock_websocket.close_code = 1000
-    mock_websocket.close_reason = "Closed by user"
-    mock_websocket.response_headers = {
+    adapter._ws_client = mock_websocket
+    mock_websocket.protocol.close_code = 1000
+    mock_websocket.protocol.close_reason = "Closed by user"
+    mock_websocket.response.headers = {
         "connection": "upgrade",
         "upgrade": "websocket",
         "sec-websocket-accept": "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=",
