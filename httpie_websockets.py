@@ -317,7 +317,7 @@ class WebsocketAdapter(BaseAdapter):
         """
         self._running = True
         logger.debug(
-            f"ws connecting. stream: {stream}, cert: {cert}, verify: {verify}, proxy: {proxies}, timeout: {timeout}"
+            f"ws connecting. stream: {stream}, verify: {verify}, proxy: {proxies}, timeout: {timeout}"
         )
         logger.debug(f"received headers: {request.headers}")
 
