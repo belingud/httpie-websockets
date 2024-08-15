@@ -84,8 +84,3 @@ dev = [
     "pytest-cov>=5.0.0",
     "ruff>=0.5.5",
 ]
-
-[project.optional-dependencies]
-socks = [
-    "python-socks>=2.5.0",
-]
