@@ -221,7 +221,11 @@ Pass time out option to waiting for connection establish.
 http wss://echo.websocket.org --timeout=3
 ```
 
-## Multi-line Input Support
+### Multi-line Input Support
+
+Coming soon.
+
+### Message Download
 
 Coming soon.
 
