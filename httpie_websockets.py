@@ -319,6 +319,7 @@ class WebsocketAdapter(BaseAdapter):
         logger.debug(
             f"ws connecting. stream: {stream}, cert: {cert}, verify: {verify}, proxy: {proxies}, timeout: {timeout}"
         )
+        logger.debug(f"received headers: {request.headers}")
 
         try:
             self._connect(
