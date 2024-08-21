@@ -44,10 +44,10 @@ publish-test: ## publish a release to testpypi
 build-and-publish: build publish ## Build and publish.
 
 docs-test: ## Test if documentation can be built without warnings or errors
-	@mkdocs build -s
+	@pdm run mkdocs build -s
 
 docs: ## Build and serve the documentation
-	@mkdocs serve
+	@pdm run mkdocs serve
 
 help:
 	just --list
