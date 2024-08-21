@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "dev", "socks"]
+groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:156bdb18302171e141276f841647441bf02be738f680311f4ec96dcdb1164123"
+content_hash = "sha256:2c0e32f9c4a90fb4c67022da8c817fde8309446126d3a9cb84bde40221c5ed3d"
 
 [[metadata.targets]]
 requires_python = ">=3.8"
@@ -722,7 +722,7 @@ files = [
 name = "python-socks"
 version = "2.5.0"
 summary = "Core proxy (SOCKS4, SOCKS5, HTTP tunneling) functionality for Python"
-groups = ["default", "socks"]
+groups = ["default"]
 files = [
     {file = "python_socks-2.5.0-py3-none-any.whl", hash = "sha256:68b34379faac94bba3f9959f45cb9ed0b9a0dc65b509eb0799d9c47fb5a9af98"},
     {file = "python_socks-2.5.0.tar.gz", hash = "sha256:cc4ad990d67bd238e496afefe436af0247793bbe01d1d4a0d37a3b124ff0baa3"},

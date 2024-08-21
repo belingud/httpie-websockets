@@ -4,6 +4,7 @@ import logging
 import os
 import platform
 import queue
+import signal
 import ssl
 import struct
 import sys
@@ -128,6 +129,8 @@ class WebsocketAdapter(BaseAdapter):
         self._stdout = sys.stdout
         self._stdout_lock = threading.Lock()
 
+        self._echoed = threading.Event()
+
         # ws info
         self._close_code: Optional[int] = None
         self._close_msg: Optional[str] = None
@@ -250,6 +253,7 @@ class WebsocketAdapter(BaseAdapter):
             self._ws.connect(
                 request.url,
                 header=self.convert2ws_headers(request.headers),
+                timeout=kwargs.get("timeout"),
                 redirect_limit=30,  # HTTPie default
                 http_proxy_host=options.get("http_proxy_host"),
                 http_proxy_port=options.get("http_proxy_port"),
@@ -266,7 +270,6 @@ class WebsocketAdapter(BaseAdapter):
         while self._running and self.connected:
             try:
                 resp_opcode, msg = self._ws.recv_data()
-                # print(f"""Received opcode: {resp_opcode}""", msg)
                 if resp_opcode == ABNF.OPCODE_CLOSE and len(msg) >= 2:
                     # received a close message
                     self._close_code = struct.unpack("!H", msg[0:2])[0]
@@ -276,7 +279,12 @@ class WebsocketAdapter(BaseAdapter):
                 else:
                     if isinstance(msg, bytes):
                         msg = msg.decode("utf8")
-                    self._write_stdout(msg)
+                    output_msg = f"< {msg}"
+                    self._write_stdout(output_msg)
+                    self._save_msg(output_msg)
+                    self._echoed.set()
+            except websocket.WebSocketTimeoutException:
+                continue
             except websocket.WebSocketConnectionClosedException as e:
                 self._write_stdout(f"Connection closed: {str(e)}")
                 break
@@ -330,22 +338,31 @@ class WebsocketAdapter(BaseAdapter):
             return self.dummy_response(request, e.code, e.msg)
 
         self._ws_thread.start()
-        time.sleep(0.5)
+        time.sleep(0.3)
         self._write_stdout(
             f"> Connected to {request.url}\n"
             "Type a message and press enter to send it\n"
             "Press Ctrl+C to close the connection"
         )
+        # Set echo event to read first stdin
+        self._echoed.set()
 
+        new_message_ready = True
         try:
             while self._running and self.connected:
+                self._echoed.wait()
+                if new_message_ready is True:
+                    self._write_stdout("> ", newline=False)
+                    new_message_ready = False
                 msg = _read_stdin()
                 if not msg:
                     continue
                 if not self._running or not self.connected:
                     self._write_stdout(f"Websocket closed, message not sent: {msg}")
                     break
+                self._save_msg(f"> {msg}")
                 self.send_msg(msg)
+                new_message_ready = True
         except KeyboardInterrupt:
             self._write_stdout("\nOops! Disconnecting. Need to force quit? Press again!")
             self._close_code = STATUS_ABNORMAL_CLOSED
@@ -361,11 +378,31 @@ class WebsocketAdapter(BaseAdapter):
             return
         if isinstance(msg, bytes):
             msg = msg.decode("utf8")
+        if newline:
+            msg += "\n"
         with self._stdout_lock:
             self._stdout.write(msg)
-            if newline:
-                self._stdout.write("\n")
             self._stdout.flush()
+
+    def _save_msg(self, msg: Union[str, bytes], newline: bool = True) -> None:
+        """Save message tmp file."""
+        if isinstance(msg, str):
+            msg = msg.encode("utf8")
+        if newline:
+            msg += b"\n"
+        self._msgs_bytes.write(msg)
+
+    def iter_content(self, chunk_size=1, decode_unicode=False):
+        """Iterate over the content of the response
+        This method for httpie --download option
+        Return all messages of send and receive in bytes
+        """
+        self._msgs_bytes.seek(0)
+        while True:
+            chunk = self._msgs_bytes.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
 
     def dummy_response(
         self, request: PreparedRequest, status_code: int = 200, msg: str = ""
@@ -375,6 +412,7 @@ class WebsocketAdapter(BaseAdapter):
         r.status_code = status_code
         r.request = request
         r.reason = msg
+        r.encoding = "utf-8"
         r.headers = CaseInsensitiveDict(self._ws.getheaders() if self._ws else {})
         r._content = msg.encode("utf8") if msg else b""
         r.raw = io.BytesIO(
@@ -386,6 +424,7 @@ class WebsocketAdapter(BaseAdapter):
                 )
             )
         )
+        r.iter_content = self.iter_content
         r.encoding = "utf-8"
         r.url = request.url or ""
         return r
@@ -398,13 +437,19 @@ class WebsocketAdapter(BaseAdapter):
         if self._ws and self._ws.connected:
             self._ws.close(status=STATUS_ABNORMAL_CLOSED, reason=self.ACTIVELY_CLOSE_REASON)
         if self._ws_thread.is_alive():
-            self._ws_thread.join()
+            try:
+                self._ws_thread.join(5)
+            except RuntimeError:
+                print(f"killing ws_thread native_id: {self._ws_thread.native_id}")
+                print(f"ps -ef | grep httpie_websockets.py: {os.popen('ps -ef | grep httpie_websockets.py').read()}")
+                os.kill(self._ws_thread.native_id, signal.SIGKILL)
 
     def send_msg(self, message: str) -> int:
         if not self._ws:
             raise requests.exceptions.RequestException("WebSocket not initialized")
         length: int = self._ws.send_text(message)
         logger.debug(f"Sent message: {message}, frame length: {length}")
+        self._echoed.clear()
         return length
 
 
@@ -441,7 +486,6 @@ if __name__ == "__main__":
     parser.add_argument("url")
     parser.add_argument("--proxy", help="proxy url")
     args = parser.parse_args()
-    print(args.proxy)
 
     proxy_u = urlparse(args.proxy)
     proxy = {"http": proxy_u.geturl(), "https": proxy_u.geturl()}
