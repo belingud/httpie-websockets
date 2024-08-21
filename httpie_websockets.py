@@ -3,8 +3,6 @@ import json
 import logging
 import os
 import platform
-import queue
-import signal
 import ssl
 import struct
 import sys
@@ -12,7 +10,7 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from typing import Any, Mapping, Optional, Union
+from typing import Any, Mapping, Optional, TextIO, Union
 from urllib.parse import ParseResult, urlparse
 
 import websocket
@@ -24,7 +22,7 @@ from requests.models import PreparedRequest, Response
 from requests.structures import CaseInsensitiveDict
 from websocket import ABNF, STATUS_ABNORMAL_CLOSED
 
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 __author__ = "belingud"
 __license__ = "MIT"
 
@@ -88,11 +86,13 @@ def normalize_url(url, default_scheme="http") -> ParseResult:
             url.index("localhost")
         except ValueError:
             return urlparse("")
-    if url.startswith('://'):
+    if url.startswith("://"):
         url = f"{default_scheme}{url}"
-    elif url.startswith('//'):
+    elif url.startswith("//"):
         url = f"{default_scheme}:{url}"
-    elif not url.startswith(('http://', 'https://', 'socks4://', 'socks4a://', 'socks5://', 'socks5h://')):
+    elif not url.startswith(
+        ("http://", "https://", "socks4://", "socks4a://", "socks5://", "socks5h://")
+    ):
         url = f"{default_scheme}://{url}"
 
     parsed_url = urlparse(url)
@@ -114,34 +114,45 @@ class AdapterError(Exception):
         return f"{self.code}: {self.msg}"
 
 
+class WSThread(threading.Thread):
+    def stop(self):
+        """Force stop a sub-thread."""
+        self._tstate_lock.release()
+        self._stop()
+
+
 class WebsocketAdapter(BaseAdapter):
     """Adapter for handling WebSocket connections."""
 
+    __slots__ = ("_running", "_ws", "_ws_thread", "_stdout", "_stdout_lock", "_msgs_bytes")
+
     ACTIVELY_CLOSE_REASON: bytes = b"KeyboardInterrupt"
 
-    def __init__(self, queue_size: int = 1024):
+    def __init__(self):
         super().__init__()
-        self._msg_queue = queue.Queue(maxsize=queue_size)
         self._running = False
 
         self._ws: Optional[websocket.WebSocket] = None
-        self._ws_thread = threading.Thread(target=self._run, name="WSThread")
-        self._stdout = sys.stdout
-        self._stdout_lock = threading.Lock()
+        self._ws_thread: WSThread = WSThread(target=self._run, name="WSThread")
+        self._ws_thread.daemon = True
 
-        self._echoed = threading.Event()
+        self._stdout: TextIO = sys.stdout
+        self._stdout_lock: threading.Lock = threading.Lock()
 
         # ws info
         self._close_code: Optional[int] = None
         self._close_msg: Optional[str] = None
 
         # store messages in bytes for download, httpie `--download` option
+        self._msgs_bytes: tempfile.TemporaryFile
         if sys.version_info >= (3, 12):
-            self._msgs_bytes = tempfile.NamedTemporaryFile(
+            self._msgs_bytes: tempfile.TemporaryFile = tempfile.NamedTemporaryFile(
                 mode="w+b", delete=True, delete_on_close=True
             )
         else:
-            self._msgs_bytes = tempfile.NamedTemporaryFile(mode="w+b", delete=True)
+            self._msgs_bytes: tempfile.TemporaryFile = tempfile.NamedTemporaryFile(
+                mode="w+b", delete=True
+            )
 
     @property
     def connected(self) -> bool:
@@ -253,7 +264,7 @@ class WebsocketAdapter(BaseAdapter):
             self._ws.connect(
                 request.url,
                 header=self.convert2ws_headers(request.headers),
-                timeout=kwargs.get("timeout"),
+                timeout=kwargs.get("timeout", 3),
                 redirect_limit=30,  # HTTPie default
                 http_proxy_host=options.get("http_proxy_host"),
                 http_proxy_port=options.get("http_proxy_port"),
@@ -279,17 +290,17 @@ class WebsocketAdapter(BaseAdapter):
                 else:
                     if isinstance(msg, bytes):
                         msg = msg.decode("utf8")
-                    output_msg = f"< {msg}"
-                    self._write_stdout(output_msg)
-                    self._save_msg(output_msg)
-                    self._echoed.set()
+                    self._write_stdout(msg)
+                    self._save_msg(f"< {msg}")
             except websocket.WebSocketTimeoutException:
                 continue
             except websocket.WebSocketConnectionClosedException as e:
                 self._write_stdout(f"Connection closed: {str(e)}")
-                break
+                continue
+                # break
             except OSError:
-                break
+                continue
+                # break
 
     def _run(self):
         """Run the WebSocket communication."""
@@ -344,16 +355,9 @@ class WebsocketAdapter(BaseAdapter):
             "Type a message and press enter to send it\n"
             "Press Ctrl+C to close the connection"
         )
-        # Set echo event to read first stdin
-        self._echoed.set()
 
-        new_message_ready = True
         try:
             while self._running and self.connected:
-                self._echoed.wait()
-                if new_message_ready is True:
-                    self._write_stdout("> ", newline=False)
-                    new_message_ready = False
                 msg = _read_stdin()
                 if not msg:
                     continue
@@ -362,7 +366,6 @@ class WebsocketAdapter(BaseAdapter):
                     break
                 self._save_msg(f"> {msg}")
                 self.send_msg(msg)
-                new_message_ready = True
         except KeyboardInterrupt:
             self._write_stdout("\nOops! Disconnecting. Need to force quit? Press again!")
             self._close_code = STATUS_ABNORMAL_CLOSED
@@ -437,19 +440,14 @@ class WebsocketAdapter(BaseAdapter):
         if self._ws and self._ws.connected:
             self._ws.close(status=STATUS_ABNORMAL_CLOSED, reason=self.ACTIVELY_CLOSE_REASON)
         if self._ws_thread.is_alive():
-            try:
-                self._ws_thread.join(5)
-            except RuntimeError:
-                print(f"killing ws_thread native_id: {self._ws_thread.native_id}")
-                print(f"ps -ef | grep httpie_websockets.py: {os.popen('ps -ef | grep httpie_websockets.py').read()}")
-                os.kill(self._ws_thread.native_id, signal.SIGKILL)
+            self._ws_thread.join(5)
+            self._ws_thread.stop()
 
     def send_msg(self, message: str) -> int:
         if not self._ws:
             raise requests.exceptions.RequestException("WebSocket not initialized")
         length: int = self._ws.send_text(message)
         logger.debug(f"Sent message: {message}, frame length: {length}")
-        self._echoed.clear()
         return length
 
 
@@ -488,17 +486,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     proxy_u = urlparse(args.proxy)
-    proxy = {"http": proxy_u.geturl(), "https": proxy_u.geturl()}
+    proxies = {"http": proxy_u.geturl(), "https": proxy_u.geturl()}
 
     adapter = WebsocketAdapter()
     session = requests.Session()
     session.mount("ws://", adapter)
     session.mount("wss://", adapter)
     # resp = session.request("WEBSOCKET", args.url, proxies={"socks5": "//195.209.188.101:58543"})
-    resp = session.request("WEBSOCKET", args.url, proxies=proxy)
+    resp = session.request("WEBSOCKET", args.url, proxies=proxies)
     print("\n".join(f"{k}: {v}" for k, v in resp.headers.items()), end="\n\n")
     try:
         print(json.dumps(resp.text, indent=4))
-    except requests.JSONDecodeError:
+    except json.JSONDecodeError:
         print(resp.text)
     session.close()

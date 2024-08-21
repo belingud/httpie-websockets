@@ -241,7 +241,7 @@ When you press Ctrl+C, you will see:
 ```shell
 > ^C
 Oops! Disconnecting. Need to force quit? Press again!
-HTTP/1.1 200 
+HTTP/1.1 200
 connection: Upgrade
 date: Wed, 21 Aug 2024 09:19:00 GMT
 fly-request-id: 01J5T3PY9EYSR9R7H6X810X4XK-nrt
