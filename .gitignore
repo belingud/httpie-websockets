@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# local test certificates
+**/*.pem
+**/*.key
+
 # C extensions
 *.so
 
