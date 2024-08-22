@@ -296,11 +296,9 @@ class WebsocketAdapter(BaseAdapter):
                 continue
             except websocket.WebSocketConnectionClosedException as e:
                 self._write_stdout(f"Connection closed: {str(e)}")
-                continue
-                # break
+                break
             except OSError:
-                continue
-                # break
+                break
 
     def _run(self):
         """Run the WebSocket communication."""
@@ -486,14 +484,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     proxy_u = urlparse(args.proxy)
-    proxies = {"http": proxy_u.geturl(), "https": proxy_u.geturl()}
+    proxies_map = {"http": proxy_u.geturl(), "https": proxy_u.geturl()}
 
     adapter = WebsocketAdapter()
     session = requests.Session()
     session.mount("ws://", adapter)
     session.mount("wss://", adapter)
-    # resp = session.request("WEBSOCKET", args.url, proxies={"socks5": "//195.209.188.101:58543"})
-    resp = session.request("WEBSOCKET", args.url, proxies=proxies)
+    resp = session.request("WEBSOCKET", args.url, proxies=proxies_map)
+    print(f"{resp.status_code} {resp.reason}")
     print("\n".join(f"{k}: {v}" for k, v in resp.headers.items()), end="\n\n")
     try:
         print(json.dumps(resp.text, indent=4))
