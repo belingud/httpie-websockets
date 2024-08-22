@@ -1,6 +1,6 @@
 [project]
 name = "httpie-websockets"
-version = "0.5.2"
+version = "0.5.4"
 description = "Websocket plugin for httpie"
 authors = [
     { name = "belingud", email = "1170202353@qq.com" }
@@ -54,7 +54,6 @@ httpie_websocket = "httpie_websockets:WebsocketPlugin"
 addopts = "-rsxX -l --tb=short --strict"
 testpaths = ["tests/"]
 python_files = ["test*.py"]
-asyncio_mode = "auto"
 markers = ["skipif: conditionally skip tests"]
 
 [tool.pdm]
@@ -78,7 +77,6 @@ dev = [
     "bump2version>=1.0.1",
     "pytest>=8.3.1",
     "pytest-mock>=3.14.0",
-    "pytest-asyncio>=0.23.8",
     "pre-commit>=3.5.0",
     "deptry>=0.17.0",
     "pytest-cov>=5.0.0",

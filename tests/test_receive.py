@@ -1,88 +1,64 @@
-# test_receive.py
-import asyncio
-from unittest.mock import MagicMock, Mock
+import struct
+from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-import websockets
+from websocket import (
+    ABNF,
+    WebSocketConnectionClosedException,
+    WebSocketTimeoutException,
+)
 
-from httpie_websockets import WebsocketAdapter
-
-
-async def echo(websocket: websockets.WebSocketServerProtocol, path: str) -> None:
-    async for message in websocket:
-        await websocket.send(message)
+from httpie_websockets import WebsocketAdapter  # 请替换为实际的模块名称
 
 
-@pytest.fixture
-def websocket_adapter():
-    adapter = WebsocketAdapter()
-    adapter._running = True
-    adapter._websocket = None  # Will be set during the test
-    adapter._write_stdout = MagicMock()
-    return adapter
+def test_receive_message():
+    with patch.object(WebsocketAdapter, 'connected', new_callable=PropertyMock) as mock_connected:
+        mock_connected.side_effect = [True, False]
+        adapter = WebsocketAdapter()
+        adapter._running = True
+        adapter._ws = MagicMock()
+        adapter._ws.recv_data.side_effect = [(ABNF.OPCODE_TEXT, "Test message")]
+        adapter._write_stdout = MagicMock()
+        adapter._receive()
+    adapter._write_stdout.assert_called_with("Test message")
 
 
-@pytest.fixture
-async def websocket():
-    async with websockets.serve(echo, "localhost", 8765):
-        async with websockets.connect("ws://localhost:8765") as websocket:
-            yield websocket
+def test_receive_close_message():
+    close_code = 1000
+    close_message = "Normal Closure"
+    msg = struct.pack("!H", close_code) + close_message.encode("utf8")
+
+    with patch.object(WebsocketAdapter, 'connected', new_callable=PropertyMock) as mock_connected:
+        mock_connected.side_effect = [True, False]
+        adapter = WebsocketAdapter()
+        adapter._running = True
+        adapter._ws = MagicMock()
+        adapter._ws.recv_data.side_effect = [(ABNF.OPCODE_CLOSE, msg)]
+        adapter._write_stdout = MagicMock()
+        adapter._receive()
+
+    assert adapter._close_code == close_code
+    assert adapter._close_msg == close_message
 
 
-@pytest.mark.asyncio
-async def test_receive(websocket_adapter: WebsocketAdapter, websocket: websockets.WebSocketServerProtocol):
-    websocket_adapter._websocket = websocket
-
-    # Start the _receive coroutine
-    receive_task = asyncio.create_task(websocket_adapter._receive())
-
-    # Send a test message to the WebSocket server
-    test_message = "test message"
-    await websocket.send(test_message)
-
-    # Allow the coroutine to process
-    await asyncio.sleep(0.1)
-
-    # Check that the _write_stdout method was called with the test message
-    websocket_adapter._write_stdout.assert_called_once_with(test_message)
-
-    # Cancel the task to exit the while loop
-    receive_task.cancel()
-    try:
-        await receive_task
-    except asyncio.CancelledError:
-        pass
+def test_receive_timeout():
+    with patch.object(WebsocketAdapter, 'connected', new_callable=PropertyMock) as mock_connected:
+        mock_connected.side_effect = [True, False]
+        adapter = WebsocketAdapter()
+        adapter._running = True
+        adapter._ws = MagicMock()
+        adapter._ws.recv_data.side_effect = WebSocketTimeoutException()
+        adapter._write_stdout = MagicMock()
+        adapter._receive()
 
 
-@pytest.mark.asyncio
-async def test_receive_connection_closed(websocket_adapter, websocket):
-    websocket_adapter._websocket = websocket
-    sent = rcvd = Mock()
-    rcvd.code = 1000
-    sent.reason = "test"
-    # Mock the websocket to raise ConnectionClosed
-    websocket_adapter._websocket.recv = MagicMock(
-        side_effect=websockets.exceptions.ConnectionClosed(rcvd, sent)
-    )
+def test_receive_connection_closed():
+    with patch.object(WebsocketAdapter, 'connected', new_callable=PropertyMock) as mock_connected:
+        mock_connected.side_effect = [True, False]
+        adapter = WebsocketAdapter()
+        adapter._running = True
+        adapter._ws = MagicMock()
+        adapter._ws.recv_data.side_effect = WebSocketConnectionClosedException("Connection closed")
+        adapter._write_stdout = MagicMock()
+        adapter._receive()
 
-    await websocket_adapter._receive()
-
-    # Check that the _write_stdout method was called with the connection closed message
-    assert websocket_adapter._write_stdout.call_count == 1
-    call_args = websocket_adapter._write_stdout.call_args[0][0]
-    assert "Connection closed when listening with code: 1000, reason: test" in call_args
-
-
-
-@pytest.mark.asyncio
-async def test_receive_cancelled_error(websocket_adapter, websocket):
-    websocket_adapter._websocket = websocket
-
-    # Mock the websocket to raise CancelledError
-    websocket_adapter._websocket.recv = MagicMock(side_effect=asyncio.CancelledError)
-
-    # Ensure no exceptions are raised
-    try:
-        await websocket_adapter._receive()
-    except asyncio.CancelledError:
-        pytest.fail("CancelledError was not handled properly")
+    adapter._write_stdout.assert_called_with("Connection closed: Connection closed")

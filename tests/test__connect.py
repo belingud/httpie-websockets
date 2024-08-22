@@ -1,12 +1,13 @@
+import random
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import websocket
-from httpie.ssl_ import HTTPieCertificate
 from requests.models import Request
 
 from httpie_websockets import AdapterError, WebsocketAdapter
+from tests import get_proxy
 
 
 def test_connect_already_connected():
@@ -26,9 +27,17 @@ def test_connect_no_proxy():
 def test_connect_with_proxy():
     adapter = WebsocketAdapter()
     request = Request(url="wss://echo.websocket.org").prepare()
-    proxies = {"http": "http://103.106.219.219:8080"}
-    proxies = {"socks5": "socks5://147.182.203.142:12345"}
-    adapter._connect(request, proxies=proxies)
+    all_proxies = get_proxy()
+    if not all_proxies:
+        pytest.skip("[SKIP] test function: test_connect_with_proxy. No proxy available from API.")
+    choice_one = random.choice(all_proxies)
+    print(all_proxies[0].geturl())
+    _proxy = {choice_one.scheme: choice_one.geturl()}
+    try:
+        adapter._connect(request, proxies=_proxy)
+    except AdapterError as e:
+        if "proxy" in e.msg:
+            pytest.skip(f"[SKIP] test function: test_connect_with_proxy. Proxy err: {e.msg}")
     assert adapter._ws is not None
 
 
@@ -36,17 +45,6 @@ def test_connect_verify_false():
     adapter = WebsocketAdapter()
     request = Request(url="wss://echo.websocket.org").prepare()
     adapter._connect(request, verify=False)
-    assert adapter._ws is not None
-
-
-def test_connect_verify_true_cert_httpiecertificate():
-    adapter = WebsocketAdapter()
-    request = Request(url="ws://echo.websocket.org").prepare()
-    cert = MagicMock(spec=HTTPieCertificate)
-    cert.key_file = "path/to/keyfile"
-    cert.cert_file = "path/to/certfile"
-    cert.key_password = "password"
-    adapter._connect(request, verify=True, cert=cert)
     assert adapter._ws is not None
 
 

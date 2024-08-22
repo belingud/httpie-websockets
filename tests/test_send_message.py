@@ -1,48 +1,57 @@
-import asyncio
-import random
+from unittest import mock
 
 import pytest
-import websockets.exceptions
+from websocket import WebSocketException
 
 from httpie_websockets import WebsocketAdapter
 
 
-@pytest.mark.asyncio
-async def test_send_messages():
+def test_send_msg_success():
+    # Create an instance of WebsocketAdapter
     adapter = WebsocketAdapter()
-    adapter._running = True
-    adapter._msg_queue = asyncio.Queue()
-    received = []
 
-    async def echo(_websocket: websockets.WebSocketServerProtocol, path: str) -> None:
-        async for msg in _websocket:
-            received.append(msg)
-            await _websocket.send(msg)
-    port = random.randint(10000, 20000)
-    server = await websockets.serve(echo, "localhost", port)
+    # Mock the websocket object
+    adapter._ws = mock.Mock()
 
-    async with websockets.connect(f"ws://localhost:{port}") as websocket:
-        adapter._websocket = websocket
+    # Mock the send_text method to return a specific length
+    message = "test message"
+    adapter._ws.send_text.return_value = len(message)
 
-        test_messages = ["Message 1", "Message 2"]
+    # Call the send_msg method
+    result = adapter.send_msg(message)
 
-        for message in test_messages:
-            await adapter._msg_queue.put(message)
-        await adapter._msg_queue.put(None)
+    # Assert that the send_text method was called with the correct message
+    adapter._ws.send_text.assert_called_once_with(message)
 
-        send_task = asyncio.create_task(adapter._send_messages())
+    # Assert that the return value matches the length of the message
+    assert result == len(message)
 
-        await asyncio.sleep(1)
 
-        send_task.cancel()
-        try:
-            await send_task
-        except asyncio.CancelledError:
-            pass
+def test_send_msg_no_websocket():
+    # Create an instance of WebsocketAdapter without initializing _ws
+    adapter = WebsocketAdapter()
 
-        assert received == test_messages
+    # Try sending a message without a WebSocket connection
+    with pytest.raises(Exception) as exc_info:
+        adapter.send_msg("test message")
 
-    assert not adapter._websocket.open
+    # Assert that an exception is raised
+    assert "WebSocket not initialized" in str(exc_info.value)
 
-    server.close()
-    await server.wait_closed()
+
+def test_send_msg_websocket_exception():
+    # Create an instance of WebsocketAdapter
+    adapter = WebsocketAdapter()
+
+    # Mock the websocket object
+    adapter._ws = mock.Mock()
+
+    # Mock the send_text method to raise a WebSocketException
+    adapter._ws.send_text.side_effect = WebSocketException("Test Exception")
+
+    # Try sending a message and expect an exception
+    with pytest.raises(WebSocketException) as exc_info:
+        adapter.send_msg("test message")
+
+    # Assert that the exception message is correct
+    assert "Test Exception" in str(exc_info.value)
