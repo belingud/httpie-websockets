@@ -18,7 +18,7 @@ Home: https://github.com/belingud/httpie-websockets
     * [Session](#session)
     * [Verify](#verify)
     * [Timeout](#timeout)
-    * [Messages Download](#messages-download)
+    * [~~Messages Download~~](#messages-download)
     * [Multi-line Input Support](#multi-line-input-support)
   * [Uninstall](#uninstall)
 <!-- TOC -->
@@ -222,47 +222,12 @@ Pass time out option to waiting for connection establish.
 http wss://echo.websocket.org --timeout=3
 ```
 
-### Messages Download
+### ~~Messages Download~~
 
-Support download messages in bytes for httpie --download option. Including send and receive messages.
+Message download functionality is no longer supported
+because the plugin cannot access the httpie environment,
+making it impossible to manage both stdout and messages simultaneously.
 
-```shell
-http wss://echo.websocket.org --download -o msgs.txt
-< Request served by 1781505b56ee58
-> Connected to wss://echo.websocket.org
-Type a message and press enter to send it
-Press Ctrl+C to close the connection
-> hello              <-- sent message
-< hello              <-- received message
->                    <-- waiting for input
-```
-When you press Ctrl+C, you will see:
-
-```shell
-> ^C
-Oops! Disconnecting. Need to force quit? Press again!
-HTTP/1.1 200
-connection: Upgrade
-date: Wed, 21 Aug 2024 09:19:00 GMT
-fly-request-id: 01J5T3PY9EYSR9R7H6X810X4XK-nrt
-sec-websocket-accept: cUDDauCuW1/u9RS5Nbcw7bYUl/8=
-server: Fly/a7508dd9 (2024-08-20)
-upgrade: websocket
-via: 1.1 fly.io
-
-Downloading to msgs.txt
-Done. 35 bytes in 00:0.09973 (350.95880538904555 bytes/s)
-```
-
-And in the `msgs.txt` file, you can see all sent and received messages include the `>` and `<` tags.
-
-```text
-< Request served by 1781505b56ee58    <-- echo.websocket.org connection msg
-> test                                <-- sent msg
-< test                                <-- received msg
-```
-
-If connection was closed by server, httpie will also download the messages.
 
 ### Multi-line Input Support
 
