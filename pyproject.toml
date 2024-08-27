@@ -71,6 +71,7 @@ default = ["linux", "macos", "windows"]
 
 [tool.pdm.scripts]
 bump = "bump2version {args}"
+changelog = "scripts/update_changelog.py"
 
 [tool.pdm.dev-dependencies]
 dev = [

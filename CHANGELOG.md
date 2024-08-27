@@ -1,3 +1,7 @@
+# Changelog
+All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
+
+---
 ## [0.5.4](https://github.com/belingud/httpie-websockets/compare/v0.5.3..v0.5.4) - 2024-08-22
 
 ### ⛰️  Features
@@ -41,3 +45,4 @@
 
 1. Add websocket response headers output, default close reason is empty
 2. Fix server close connection will cause block and no action in command-line
+
