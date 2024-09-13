@@ -1,6 +1,22 @@
 # Changelog
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+
+---
+## [0.6.0](https://github.com/belingud/httpie-websockets/compare/v0.5.4..v0.6.0) - 2024-09-13
+
+### ⛰️  Features
+
+- Add multiple line input support, escape odd backslashes at the end-of-line - ([5ea72d8](https://github.com/belingud/httpie-websockets/commit/5ea72d8d82fa2a36f0bbc257f7c078303a224157)) - belingud
+- Add changelog generation script - ([d1f5e37](https://github.com/belingud/httpie-websockets/commit/d1f5e37ae8bda34657b6c5d91258fe5e72835cbc)) - belingud
+- Update changelog formatting and parser configuration - ([df3bcf4](https://github.com/belingud/httpie-websockets/commit/df3bcf4415d649a989bef4aa116833205c84fa80)) - belingud
+- Remove deprecated Makefile and Messages Download functionality - ([c7f5050](https://github.com/belingud/httpie-websockets/commit/c7f505085b160652cf9dd01427ca5209b47c113d)) - belingud
+
+### 📚 Documentation
+
+- Update README and CHANGELOG for new features and fixes - ([7cc5b91](https://github.com/belingud/httpie-websockets/commit/7cc5b9174f9dcd912e135773af12d41abf7eb1e5)) - belingud
+
+
 ---
 ## [0.5.4](https://github.com/belingud/httpie-websockets/compare/v0.5.3..v0.5.4) - 2024-08-22
 
