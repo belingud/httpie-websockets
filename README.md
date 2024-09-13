@@ -40,21 +40,21 @@ You can install by httpie plugins command:
 httpie plugins install httpie-websockets
 ```
 
+> When you upgrade `httpie-websockets` by `httpie plugins upgrade httpie-websockets`, the dist dir of lower version will not be removed.
+> You can remove it manually if you want. On Mac it's in `~/.config/httpie/plugins/lib/python3.12/site-packages`.
+
 or use pip in the same environment with httpie
 
 ```shell
 pip install httpie-websockets
 ```
 
-If your `httpie` is installed with `pipx`, you also can use `pipx` to install `httpie-websockets`, If you cannot use it
-properly after installation。
+If your `httpie` is installed with `pipx`, you also can use `pipx` to install `httpie-websockets`.
 
 Suppose your httpie environment is named httpie.
 
 ```shell
 # Replace httpie with your httpie venv name
-pipx inject httpie httpie-websockets  # will auto upgrade version
-# or
 pipx runpip httpie install -U httpie-websockets
 ```
 
@@ -72,9 +72,11 @@ Example:
 
 ```shell
 $ http wss://echo.websocket.org
-> wss://echo.websocket.org
-Type a message and press enter to send it
-Press Ctrl+C to close the connection
+Request served by 7811941c69e658  <== This msg is from server
+> Connected to wss://echo.websocket.org
+> Type a message and press enter to send it.
+> The backslash at the end of a line is treated as input not ended.
+> Press Ctrl+C to close the connection.
 
 ```
 
@@ -231,7 +233,35 @@ making it impossible to manage both stdout and messages simultaneously.
 
 ### Multi-line Input Support
 
-Coming soon.
+The backslash at the end of a line is treated as input not ended, **only the end-of-line**.
+
+If you want to input a multiline input, use `\` at the end of the line just like bash.
+
+Example:
+
+One backslash at the end of a line
+```text
+hello\
+ world!
+```
+
+Will send as `hello world!`
+
+Multiple backslashes at the end of a line
+```text
+hello\\\
+  world!
+```
+
+Will send as `hello\  world!`, assume you input two whitespace ahead of `world!`.
+
+Not at the end-of-line
+```text
+hel\\lo\
+ world!
+```
+
+Will send as `hel\\lo world!`
 
 ## Uninstall
 

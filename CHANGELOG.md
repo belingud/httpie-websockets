@@ -45,4 +45,3 @@ All notable changes to this project will be documented in this file. See [conven
 
 1. Add websocket response headers output, default close reason is empty
 2. Fix server close connection will cause block and no action in command-line
-
