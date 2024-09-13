@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any, AnyStr, Mapping, Optional, TextIO, Union
+from typing import Any, Mapping, Optional, TextIO, Tuple, Union
 from urllib.parse import ParseResult, urlparse
 
 import websocket
@@ -50,7 +50,7 @@ if platform.system().lower() == "windows":
                     print()
                     break
                 input_buffer += char
-            return input_buffer.strip()
+            return input_buffer.rstrip("\n")
         return None
 else:
     import select
@@ -58,7 +58,7 @@ else:
     def _read_stdin():
         r, _, _ = select.select([sys.stdin], [], [], 1)
         if sys.stdin in r:
-            return sys.stdin.readline().strip()
+            return sys.stdin.readline().rstrip("\n")
         return None
 
 
@@ -101,6 +101,34 @@ def normalize_url(url, default_scheme="http") -> ParseResult:
         return urlparse("")
 
     return parsed_url
+
+
+def escape_backslashes(s: str) -> Tuple[str, bool]:
+    """
+    Escape backslashes at the end in the given string.
+    s should not end with '\n'
+
+    repr(s) == 'example\\\\' -> repr(s) == 'example\\'
+    repr(s) == 'example\\'   -> repr(s) == 'example'
+
+    Args:
+        s (str): The string to escape.
+
+    Returns:
+        tuple: A tuple containing the escaped string and a boolean indicating whether
+        the string originally had an even number of backslashes.
+
+    Examples:
+        >>> escape_backslashes("example\\\\\\\\")  # escape_backslashes("example\\\\")
+        ('example\\\\', True)
+        >>> escape_backslashes("example\\\\")  # escape_backslashes("example\\")
+        ('example', False)
+    """
+    n = len(s) - len(s.rstrip("\\"))
+
+    if n > 0:
+        s = s[:-n] + ("\\" * ((n - 1) // 2 + (n - 1) % 2))
+    return s, n % 2 == 0
 
 
 class AdapterError(Exception):
@@ -242,7 +270,7 @@ class WebsocketAdapter(BaseAdapter):
                     "ca_certs": Path(cert).expanduser().resolve().as_posix(),
                 }
         try:
-            self._ws: websocket.WebSocket = websocket.WebSocket(sslopt=options.get("sslopt"))
+            self._ws = websocket.WebSocket(sslopt=options.get("sslopt"))
             self._ws.connect(
                 request.url,
                 header=self.convert2ws_headers(request.headers),
@@ -262,7 +290,7 @@ class WebsocketAdapter(BaseAdapter):
         """Receive messages from the WebSocket."""
         while self._running and self.connected:
             try:
-                resp_opcode, msg = self._ws.recv_data()
+                resp_opcode, msg = self._ws.recv_data()  # type: ignore
                 if resp_opcode == ABNF.OPCODE_CLOSE and len(msg) >= 2:
                     # received a close message
                     self._close_code = struct.unpack("!H", msg[0:2])[0]
@@ -331,19 +359,26 @@ class WebsocketAdapter(BaseAdapter):
         time.sleep(0.3)
         self._write_stdout(
             f"> Connected to {request.url}\n"
-            "Type a message and press enter to send it\n"
-            "Press Ctrl+C to close the connection"
+            "> Type a message and press enter to send it.\n"
+            "> The backslash at the end of a line is treated as input not ended.\n"
+            "> Press Ctrl+C to close the connection."
         )
 
         try:
+            input_end: bool
+            msg: str = ""
             while self._running and self.connected:
-                msg = _read_stdin()
-                if not msg:
+                chars = _read_stdin()
+                if not chars:
                     continue
                 if not self._running or not self.connected:
-                    self._write_stdout(f"Websocket closed, message not sent: {msg}")
+                    self._write_stdout(f"Websocket closed, message not sent: {chars}")
                     break
-                self.send_msg(msg)
+                chars, input_end = escape_backslashes(chars)
+                msg += chars
+                if input_end is True:
+                    self.send_msg(msg)
+                    msg = ""
         except KeyboardInterrupt:
             self._write_stdout("\nOops! Disconnecting. Need to force quit? Press again!")
             self._close_code = STATUS_ABNORMAL_CLOSED
@@ -353,7 +388,7 @@ class WebsocketAdapter(BaseAdapter):
 
         return self.dummy_response(request)
 
-    def _write_stdout(self, msg: AnyStr, newline: bool = True) -> None:
+    def _write_stdout(self, msg: str, newline: bool = True) -> None:
         """Write message to stdout."""
         if not self._running:
             return
