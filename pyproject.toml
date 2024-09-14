@@ -1,10 +1,8 @@
 [project]
 name = "httpie-websockets"
-version = "0.6.0"
+version = "0.6.1"
 description = "Websocket plugin for httpie"
-authors = [
-    { name = "belingud", email = "1170202353@qq.com" }
-]
+authors = [{ name = "belingud", email = "1170202353@qq.com" }]
 dependencies = [
     "requests>=2.31.0",
     "httpie>=3.2.3",
@@ -31,7 +29,7 @@ classifiers = [
     "Topic :: System :: Networking",
     "Topic :: Terminals",
     "Topic :: Text Processing",
-    "Topic :: Utilities"
+    "Topic :: Utilities",
 ]
 
 [project.urls]
@@ -51,7 +49,7 @@ httpie_websockets = "httpie_websockets:WebsocketSPlugin"
 httpie_websocket = "httpie_websockets:WebsocketPlugin"
 
 [tool.pytest.ini_options]
-addopts = "-rsxX -l --tb=short --strict"
+addopts = "-rsxX -s -l --tb=short --strict"
 testpaths = ["tests/"]
 python_files = ["test*.py"]
 markers = ["skipif: conditionally skip tests"]
@@ -63,7 +61,15 @@ distribution = true
 profile = "black"
 
 [tool.pdm.build]
-excludes = ["tests", ".idea/", ".vscode", ".venv", "pdm.lock", ".gitignore", "var"]
+excludes = [
+    "tests",
+    ".idea/",
+    ".vscode",
+    ".venv",
+    "pdm.lock",
+    ".gitignore",
+    "var",
+]
 includes = ["httpie_websockets.py"]
 
 [tool.pdm.lock]
