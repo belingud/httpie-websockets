@@ -50,7 +50,7 @@ if platform.system().lower() == "windows":
                     print()
                     break
                 input_buffer += char
-            return input_buffer.rstrip("\n")
+            return input_buffer.rstrip("\n ")
         return None
 else:
     import select
@@ -58,7 +58,7 @@ else:
     def _read_stdin():
         r, _, _ = select.select([sys.stdin], [], [], 1)
         if sys.stdin in r:
-            return sys.stdin.readline().rstrip("\n")
+            return sys.stdin.readline().rstrip("\n ")
         return None
 
 
