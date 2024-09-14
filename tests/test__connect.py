@@ -31,7 +31,6 @@ def test_connect_with_proxy():
     if not all_proxies:
         pytest.skip("[SKIP] test function: test_connect_with_proxy. No proxy available from API.")
     choice_one = random.choice(all_proxies)
-    print(all_proxies[0].geturl())
     _proxy = {choice_one.scheme: choice_one.geturl()}
     try:
         adapter._connect(request, proxies=_proxy)

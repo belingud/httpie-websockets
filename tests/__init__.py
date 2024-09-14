@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from unittest.mock import Mock
 from urllib.parse import urlparse
@@ -16,12 +17,14 @@ class MockTask:
 
 @lru_cache(maxsize=3)
 def get_proxy(limit=10, timeout=5000):
-    url = (
-        "https://api.proxyscrape.com/v3/free-proxy-list/get?"
-        f"request=getproxies&country=hk&skip=0&proxy_format=protocolipport&format=json&limit={limit}&"
-        f"anonymity=Elite&timeout={timeout}"
-    )
+    url = "https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/countries/CN/data.txt"
     resp = requests.get(url)
     resp.raise_for_status()
-    data = resp.json()
-    return [urlparse(proxy["proxy"]) for proxy in data['proxies']]
+    os.environ.pop("HTTP_PROXY", None)
+    os.environ.pop("HTTPS_PROXY", None)
+    os.environ.pop("ALL_PROXY", None)
+    os.environ.pop("http_proxy", None)
+    os.environ.pop("https_proxy", None)
+    os.environ.pop("all_proxy", None)
+    data = resp.text.splitlines()
+    return [urlparse(proxy) for proxy in data]
