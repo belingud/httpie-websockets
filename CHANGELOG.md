@@ -3,6 +3,23 @@ All notable changes to this project will be documented in this file. See [conven
 
 
 ---
+## [0.6.1](https://github.com/belingud/httpie-websockets/compare/v0.6.0..v0.6.1) - 2024-09-14
+
+### 🐛 Bug Fixes
+
+- Correct newline handling in stdin read - ([20d8285](https://github.com/belingud/httpie-websockets/commit/20d82859415a81829ec67303be9560da8c622ac2)) - belingud
+
+### 🧪 Testing
+
+- Refactor proxy test setup and add end-with-whitespace tests - ([d580559](https://github.com/belingud/httpie-websockets/commit/d5805590dd584f4e34501e235813bc34e29e431c)) - belingud
+
+### ⚙️ Miscellaneous Tasks
+
+- Update pyproject.toml and pyrightconfig.json - ([d7d2077](https://github.com/belingud/httpie-websockets/commit/d7d207761e29189e325a30a33c131e8b09b52e17)) - belingud
+- Update CHANGELOG and scripts for new features and fixes - ([1e5048e](https://github.com/belingud/httpie-websockets/commit/1e5048ee16e5b0275e3fac9c26c7f2c1385dee98)) - belingud
+
+
+---
 ## [0.6.0](https://github.com/belingud/httpie-websockets/compare/v0.5.4..v0.6.0) - 2024-09-13
 
 ### ⛰️  Features
