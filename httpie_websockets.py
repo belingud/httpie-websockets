@@ -154,7 +154,7 @@ class WebsocketAdapter(BaseAdapter):
         self._running = False
 
         self._ws: Optional[websocket.WebSocket] = None
-        self._ws_thread: threading.Thread = threading.Thread(target=self._run, name="WSThread")
+        self._ws_thread: threading.Thread = threading.Thread(target=self._receive, name="WSThread")
         self._ws_thread.daemon = True
 
         self._stdout: TextIO = sys.stdout
@@ -308,13 +308,6 @@ class WebsocketAdapter(BaseAdapter):
                 break
             except OSError:
                 break
-
-    def _run(self):
-        """Run the WebSocket communication."""
-        try:
-            self._receive()
-        except Exception as e:
-            self._write_stdout(f"Error: {str(e)}")
 
     def send(
         self,
