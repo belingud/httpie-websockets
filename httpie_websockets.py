@@ -22,7 +22,7 @@ from requests.models import PreparedRequest, Response
 from requests.structures import CaseInsensitiveDict
 from websocket import ABNF, STATUS_ABNORMAL_CLOSED
 
-"1.0.0"
+__version__ = "1.0.0"
 __author__ = "belingud"
 __license__ = "MIT"
 
