@@ -145,7 +145,7 @@ class AdapterError(Exception):
 class WebsocketAdapter(BaseAdapter):
     """Adapter for handling WebSocket connections."""
 
-    __slots__ = ("_running", "_ws", "_ws_thread", "_stdout", "_stdout_lock", "_msgs_bytes")
+    __slots__ = ("_running", "_ws", "_ws_thread", "_stdout", "_stdout_lock")
 
     ACTIVELY_CLOSE_REASON: bytes = b"KeyboardInterrupt"
 
