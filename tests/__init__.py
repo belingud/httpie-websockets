@@ -17,7 +17,7 @@ class MockTask:
 
 @lru_cache(maxsize=3)
 def get_proxy(limit=10, timeout=5000):
-    url = "https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/countries/CN/data.txt"
+    url = "https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/countries/HK/data.txt"
     resp = requests.get(url)
     resp.raise_for_status()
     os.environ.pop("HTTP_PROXY", None)
