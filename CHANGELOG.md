@@ -1,3 +1,17 @@
+
+---
+## [1.0.0](https://github.com/belingud/httpie-websockets/compare/v0.6.1..v1.0.0) - 2024-10-05
+
+### 🚜 Refactor
+
+- **(websockets)** Remove unused attribute "_msgs_bytes" from WebsocketAdapter - ([964dcda](https://github.com/belingud/httpie-websockets/commit/964dcda4d1489d23f476868bdd4430cdc426d201)) - belingud
+- Rename method in WebsocketAdapter class for clarity - ([388d937](https://github.com/belingud/httpie-websockets/commit/388d937eb41d7fa8540ff1efaaab6590f8f81064)) - belingud
+- Updated proxy URL to Hong Kong in get_proxy function - ([4057107](https://github.com/belingud/httpie-websockets/commit/405710763e5fdaf2ad7e1fadb4462bc16673dd88)) - belingud
+
+### 📚 Documentation
+
+- Update CHANGELOG for v0.6.1 release - ([0638795](https://github.com/belingud/httpie-websockets/commit/0638795498efd0a33a644c0dea52cd14988c7be3)) - belingud
+
 # Changelog
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
