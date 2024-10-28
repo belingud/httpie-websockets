@@ -58,6 +58,12 @@ Suppose your httpie environment is named httpie.
 pipx runpip httpie install -U httpie-websockets
 ```
 
+If your `httpie` is installed by `uv` as `uv tool install httpie`.
+
+```shell
+uv tool install httpie --with httpie-websockets
+```
+
 ## Usage
 
 After install this plugin, just pass websocket url to `http` command.
@@ -277,4 +283,10 @@ Installed by `pip` command, uninstall by
 
 ```shell
 pip uninstall httpie-websockets
+```
+
+Installed by `uv`,
+
+```shell
+uv install httpie
 ```
