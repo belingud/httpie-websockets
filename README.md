@@ -40,9 +40,6 @@ You can install by httpie plugins command:
 httpie plugins install httpie-websockets
 ```
 
-> When you upgrade `httpie-websockets` by `httpie plugins upgrade httpie-websockets`, the dist dir of lower version will not be removed.
-> You can remove it manually if you want. On Mac it's in `~/.config/httpie/plugins/lib/python3.12/site-packages`.
-
 or use pip in the same environment with httpie
 
 ```shell
@@ -58,7 +55,7 @@ Suppose your httpie environment is named httpie.
 pipx runpip httpie install -U httpie-websockets
 ```
 
-If your `httpie` is installed by `uv` as `uv tool install httpie`.
+If your `httpie` is installed by `uv`.
 
 ```shell
 uv tool install httpie --with httpie-websockets
