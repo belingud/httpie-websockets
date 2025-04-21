@@ -38,7 +38,9 @@ try:
 except ImportError:
     logger.debug("pyton-socks not installed, websocket proxy will not work")
 
+# Read characters from stdin in a non-blocking way
 if platform.system().lower() == "windows":
+    # On Windows, use msvcrt to read every character from stdin
     import msvcrt
 
     def _read_stdin():
@@ -53,6 +55,7 @@ if platform.system().lower() == "windows":
             return input_buffer.rstrip("\n ")
         return None
 else:
+    # On Unix-like systems, use select to read every character from stdin
     import select
 
     def _read_stdin():
